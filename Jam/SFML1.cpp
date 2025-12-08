@@ -3,40 +3,40 @@
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 
 using namespace sf;
 
 constexpr float PPM = 30.f;
 constexpr float INV_PPM = 1.f / PPM;
 
-// Function to generate random float between min and max
+// Generate random float between min and max
 float randomFloat(float min, float max) {
     return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
+}
+
+// Generate small random offset for shake
+float randomOffset(float magnitude) {
+    return ((rand() % 2000) / 1000.f - 1.f) * magnitude; // -magnitude..+magnitude
 }
 
 int main()
 {
     srand(static_cast<unsigned>(time(nullptr)));
 
-    // ------------------------------------------------------
-    // Window
-    // ------------------------------------------------------
     RenderWindow window(VideoMode(1280, 720), "SFML + Box2D Template");
     window.setFramerateLimit(60);
 
-    // ------------------------------------------------------
+    View camera(FloatRect(0, 0, 1280, 720));
+
     // Box2D World
-    // ------------------------------------------------------
     b2Vec2 gravity(0.f, 9.8f);
     b2World world(gravity);
 
-    // ------------------------------------------------------
-    // Ground body
-    // ------------------------------------------------------
+    // Ground
     b2BodyDef groundDef;
     groundDef.type = b2_staticBody;
     groundDef.position.Set(640 * INV_PPM, 680 * INV_PPM);
-
     b2Body* ground = world.CreateBody(&groundDef);
 
     b2PolygonShape groundBox;
@@ -48,13 +48,11 @@ int main()
     groundShape.setPosition(640.f, 680.f);
     groundShape.setFillColor(Color::Green);
 
-    // ------------------------------------------------------
-    // Player Box (dynamic)
-    // ------------------------------------------------------
+    // Player
     b2BodyDef boxDef;
     boxDef.type = b2_dynamicBody;
     boxDef.position.Set(640 * INV_PPM, 200 * INV_PPM);
-    boxDef.fixedRotation = true; // prevent rotation
+    boxDef.fixedRotation = true;
     b2Body* box = world.CreateBody(&boxDef);
 
     b2PolygonShape dynamicBox;
@@ -70,16 +68,18 @@ int main()
     boxShape.setOrigin(25.f, 25.f);
     boxShape.setFillColor(Color::Red);
 
-    // ------------------------------------------------------
-    // Psycho mode variables
-    // ------------------------------------------------------
+    // Psycho mode
     bool psychoMode = false;
-    float nextSwitch = randomFloat(2.f, 5.f); // next switch time in seconds
+    float nextPsychoSwitch = randomFloat(6.f, 8.f); // longer duration
     Clock psychoClock;
 
-    // ------------------------------------------------------
-    // Game Loop
-    // ------------------------------------------------------
+    // Split mode camera rotation
+    bool splitMode = false;
+    float splitDuration = 0.f;
+    float nextSplitCheck = randomFloat(1.f, 3.f);
+    Clock splitClock;
+    float shakeMagnitude = 8.f; // pixels
+
     while (window.isOpen())
     {
         Event e;
@@ -90,14 +90,9 @@ int main()
                 window.close();
         }
 
-        // ----------------------------
-        // Step Box2D
-        // ----------------------------
         world.Step(1.f / 60.f, 8, 3);
 
-        // ----------------------------
         // Player input
-        // ----------------------------
         b2Vec2 vel = box->GetLinearVelocity();
         float moveSpeed = 5.f;
 
@@ -105,36 +100,70 @@ int main()
         bool right = Keyboard::isKeyPressed(Keyboard::D);
         bool jump = Keyboard::isKeyPressed(Keyboard::W);
 
-        if (psychoMode) std::swap(left, right); // invert controls
+        if (psychoMode) std::swap(left, right);
 
         if (left) vel.x = -moveSpeed;
         else if (right) vel.x = moveSpeed;
         else vel.x = 0;
 
-        if (jump && fabs(vel.y) < 0.01f) // jump only if nearly on ground
+        if (jump && fabs(vel.y) < 0.01f)
             vel.y = -10.f;
 
         box->SetLinearVelocity(vel);
 
-        // ----------------------------
         // Psycho mode switch
-        // ----------------------------
-        if (psychoClock.getElapsedTime().asSeconds() >= nextSwitch) {
+        if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
             psychoMode = !psychoMode;
             boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
-            nextSwitch = randomFloat(5.f, 10.f); // next interval
+            nextPsychoSwitch = randomFloat(6.f, 8.f); // next duration
             psychoClock.restart();
+            // Reset split mode on psycho start
+            splitMode = false;
+            splitClock.restart();
+            nextSplitCheck = randomFloat(1.f, 3.f);
         }
 
-        // ----------------------------
-        // Update SFML box position
-        // ----------------------------
+        // Split mode (only in psycho)
+        if (psychoMode) {
+            float t = splitClock.getElapsedTime().asSeconds();
+            if (!splitMode && t >= nextSplitCheck) {
+                // 50% chance to enable split mode
+                if (rand() % 2 == 0) {
+                    splitMode = true;
+                    splitDuration = randomFloat(2.f, 4.f);
+                    camera.setRotation(180.f);
+                }
+            }
+            if (splitMode && t >= splitDuration + nextSplitCheck) {
+                // End split mode
+                splitMode = false;
+                camera.setRotation(0.f);
+                splitClock.restart();
+                nextSplitCheck = randomFloat(1.f, 3.f);
+            }
+        }
+        else {
+            splitMode = false;
+            camera.setRotation(0.f);
+        }
+
+        // Update box position
         b2Vec2 pos = box->GetPosition();
         boxShape.setPosition(pos.x * PPM, pos.y * PPM);
 
-        // ----------------------------
+        // Camera follows player
+        Vector2f camCenter = boxShape.getPosition();
+
+        // Apply shake if split mode is active
+        if (splitMode) {
+            camCenter.x += randomOffset(shakeMagnitude);
+            camCenter.y += randomOffset(shakeMagnitude);
+        }
+
+        camera.setCenter(camCenter);
+        window.setView(camera);
+
         // Draw
-        // ----------------------------
         window.clear(Color::Black);
         window.draw(groundShape);
         window.draw(boxShape);
