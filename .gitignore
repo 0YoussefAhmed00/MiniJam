@@ -8,8 +8,6 @@
 **/[Oo]bj/
 **/ipch/
 
-# Jam folder entirely
-Jam/
 
 # Visual Studio files
 .vs/
