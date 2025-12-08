@@ -5,6 +5,7 @@
 #include <box2d/box2d.h>
 #include <memory>
 #include "Units.h"
+#include "Animation.h"
 
 class Player {
 public:
@@ -12,10 +13,13 @@ public:
     Player(b2World* world, float startX = 640.f, float startY = 200.f);
     ~Player();
 
-    // update visual shape from physics body
+    // update logic (physics already stepped by Game)
+    void Update(float dt, bool grounded);
+
+    // update visual sprite from physics body
     void SyncGraphics();
 
-    // draw the player shape
+    // draw the player sprite
     void Draw(sf::RenderWindow& window);
 
     // physics accessors
@@ -25,16 +29,21 @@ public:
     b2Vec2 GetLinearVelocity() const { return m_body ? m_body->GetLinearVelocity() : b2Vec2(0, 0); }
     void SetLinearVelocity(const b2Vec2& v) { if (m_body) m_body->SetLinearVelocity(v); }
 
-    // visual helpers
-    void SetColor(const sf::Color& c) { m_shape.setFillColor(c); }
-    void SetOrigin(float ox, float oy) { m_shape.setOrigin(ox, oy); }
+    // visual helpers (color tint on sprite)
+    void SetColor(const sf::Color& c) { m_sprite.setColor(c); }
+    void SetOrigin(float ox, float oy) { m_sprite.setOrigin(ox, oy); }
 
 private:
     b2World* m_world;
     b2Body* m_body;
     b2Fixture* m_footFixture;
 
-    sf::RectangleShape m_shape;
+    // Visuals
+    sf::Sprite m_sprite;
+    Animation m_anim;
+
+    // State
+    bool m_facingRight;
 };
 
 #endif // PLAYER_H

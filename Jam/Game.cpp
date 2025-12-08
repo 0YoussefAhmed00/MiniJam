@@ -351,7 +351,7 @@ void Game::update(float dt)
     bool jumpKeyS = Keyboard::isKeyPressed(Keyboard::S);
     bool shiftKey = Keyboard::isKeyPressed(Keyboard::LShift) || Keyboard::isKeyPressed(Keyboard::RShift);
 
-    moveSpeed = (shiftKey ? 2.5f : 5.f);
+    moveSpeed = (shiftKey ? 5.f : 10.f);
 
     if (inputLocked) {
         leftKey = rightKey = false;
@@ -380,6 +380,7 @@ void Game::update(float dt)
     }
 
     m_player->SetLinearVelocity(vel);
+    m_player->Update(dt, isGroundedNow);
 
     // Audio update (listener = player)
     b2Vec2 playerPos = m_player->GetBody()->GetPosition();

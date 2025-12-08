@@ -130,6 +130,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Animation.cpp" />
     <ClCompile Include="AudioManager.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="MyContactListener.cpp" />
@@ -137,6 +138,7 @@
     <ClCompile Include="SFML1.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Animation.h" />
     <ClInclude Include="AudioEmitter.h" />
     <ClInclude Include="AudioManager.h" />
     <ClInclude Include="Game.h" />
