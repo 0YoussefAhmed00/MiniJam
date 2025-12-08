@@ -58,6 +58,7 @@ int main()
     MyContactListener contactListener;
     world.SetContactListener(&contactListener);
 
+    //////////////////////////////////////////////////////
     // Ground
     b2BodyDef groundDef;
     groundDef.type = b2_staticBody;
