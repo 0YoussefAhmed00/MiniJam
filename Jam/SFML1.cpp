@@ -1,9 +1,15 @@
-﻿#include <SFML/Graphics.hpp>
+﻿// File: main.cpp
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <box2d/box2d.h>
 #include <iostream>
+#include <vector>
+#include <memory>
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+
+#include "AudioManager.h"
 
 using namespace sf;
 
@@ -42,19 +48,21 @@ public:
     }
 };
 
-int main()
-{
+int main() {
     srand(static_cast<unsigned>(time(nullptr)));
 
-    RenderWindow window(VideoMode(1280, 720), "SFML + Box2D Template");
+    RenderWindow window(VideoMode(1280, 720), "SFML + Box2D + AudioManager + Persona Demo");
     window.setFramerateLimit(60);
 
+    // Camera / view
     View camera(FloatRect(0, 0, 1280, 720));
+    View defaultView = window.getDefaultView();
 
-    // Box2D World
+    // Box2D world
     b2Vec2 gravity(0.f, 9.8f);
     b2World world(gravity);
 
+    // Contact listener (for foot sensor)
     MyContactListener contactListener;
     world.SetContactListener(&contactListener);
 
@@ -66,13 +74,13 @@ int main()
     b2Body* ground = world.CreateBody(&groundDef);
 
     b2PolygonShape groundBox;
-    groundBox.SetAsBox(500 * INV_PPM, 20 * INV_PPM);
+    groundBox.SetAsBox(2000.0f * INV_PPM, 10.0f * INV_PPM);
     ground->CreateFixture(&groundBox, 0.f);
 
-    RectangleShape groundShape(Vector2f(1000.f, 40.f));
-    groundShape.setOrigin(500.f, 20.f);
+    RectangleShape groundShape(Vector2f(4000.f, 40.f));
+    groundShape.setOrigin(2000.f, 20.f);
     groundShape.setPosition(640.f, 680.f);
-    groundShape.setFillColor(Color::Green);
+    groundShape.setFillColor(Color(80, 160, 80));
 
     // Player body
     b2BodyDef boxDef;
@@ -81,7 +89,7 @@ int main()
     boxDef.fixedRotation = true;
     b2Body* box = world.CreateBody(&boxDef);
 
-    // Main body
+    // Main body fixture
     b2PolygonShape dynamicBox;
     dynamicBox.SetAsBox(25 * INV_PPM, 25 * INV_PPM);
 
@@ -93,19 +101,77 @@ int main()
 
     // Foot sensor
     b2PolygonShape footShape;
+    // width 44px -> 22, height 10px -> 5, offset down by 25 px
     footShape.SetAsBox((22.f * INV_PPM), (5.f * INV_PPM), b2Vec2(0.f, 25.f * INV_PPM), 0.f);
     b2FixtureDef footFixtureDef;
     footFixtureDef.shape = &footShape;
     footFixtureDef.isSensor = true;
     b2Fixture* footSensor = box->CreateFixture(&footFixtureDef);
-
     contactListener.footFixture = footSensor;
 
     RectangleShape boxShape(Vector2f(50.f, 50.f));
     boxShape.setOrigin(25.f, 25.f);
     boxShape.setFillColor(Color::Red);
 
-    // Psycho mode
+    // ---------------------------
+    // Audio emitters & manager
+    // ---------------------------
+    auto dialogueEmitter = std::make_shared<AudioEmitter>();
+    dialogueEmitter->id = "dialogue1";
+    dialogueEmitter->category = AudioCategory::Dialogue;
+    dialogueEmitter->position = b2Vec2((640 - 100) * INV_PPM, (680 - 50) * INV_PPM);
+    dialogueEmitter->minDistance = 0.5f;
+    dialogueEmitter->maxDistance = 20.f;
+    dialogueEmitter->baseVolume = 1.f;
+
+    auto effectEmitter = std::make_shared<AudioEmitter>();
+    effectEmitter->id = "effect1";
+    effectEmitter->category = AudioCategory::Effects;
+    effectEmitter->position = b2Vec2((640 + 100) * INV_PPM, (680 - 50) * INV_PPM);
+    effectEmitter->minDistance = 0.5f;
+    effectEmitter->maxDistance = 20.f;
+    effectEmitter->baseVolume = 1.f;
+
+    CircleShape diagMark(8.f);
+    diagMark.setFillColor(Color::Yellow);
+    diagMark.setOrigin(8.f, 8.f);
+
+    CircleShape fxMark(8.f);
+    fxMark.setFillColor(Color::Cyan);
+    fxMark.setOrigin(8.f, 8.f);
+
+    AudioManager audio;
+    audio.SetCrossfadeTime(1.2f);
+
+    bool ok = audio.loadMusic("assets/Audio/music_neutral.ogg", "assets/Audio/music_crazy.ogg");
+    if (!ok) std::cerr << "Warning: music not loaded. Replace file paths with your assets.\n";
+
+    if (!dialogueEmitter->loadBuffer("assets/Audio/dialogue.wav"))
+        std::cerr << "Warning: dialogue.wav not loaded." << std::endl;
+    if (!effectEmitter->loadBuffer("assets/Audio/effect.wav"))
+        std::cerr << "Warning: effect.wav not loaded." << std::endl;
+
+    audio.RegisterEmitter(dialogueEmitter);
+    audio.RegisterEmitter(effectEmitter);
+
+    if (dialogueEmitter->buffer) {
+        dialogueEmitter->sound.setLoop(true);
+        dialogueEmitter->play();
+    }
+    if (effectEmitter->buffer) {
+        effectEmitter->sound.setLoop(true);
+        effectEmitter->play();
+    }
+
+    audio.SetMasterVolume(1.f);
+    audio.SetMusicVolume(0.9f);
+    audio.SetBackgroundVolume(0.6f);
+    audio.SetDialogueVolume(1.f);
+    audio.SetEffectsVolume(1.f);
+
+    // ---------------------------
+    // Persona / psycho state variables
+    // ---------------------------
     bool psychoMode = false;
     float nextPsychoSwitch = randomFloat(6.f, 8.f);
     Clock psychoClock;
@@ -129,22 +195,98 @@ int main()
     const float INPUT_LOCK_DURATION = 2.f;
     float nextInputLockCheck = randomFloat(3.f, 6.f);
 
-    while (window.isOpen())
-    {
-        Event e;
-        while (window.pollEvent(e))
-        {
-            if (e.type == Event::Closed ||
-                (e.type == Event::KeyPressed && e.key.code == Keyboard::Escape))
+    // ---------------------------
+    // Debug text
+    // ---------------------------
+    Font font;
+    if (!font.loadFromFile("assets/Font/Cairo-VariableFont_slnt,wght.ttf")) {
+        std::cerr << "Warning: font not loaded (assets/arial.ttf)\n";
+    }
+    Text debugText;
+    debugText.setFont(font);
+    debugText.setCharacterSize(16);
+    debugText.setFillColor(Color::White);
+    debugText.setPosition(10.f, 10.f);
+
+    // Frame loop
+    Clock frameClock;
+    while (window.isOpen()) {
+        float dt = frameClock.restart().asSeconds();
+
+        Event ev;
+        while (window.pollEvent(ev)) {
+            if (ev.type == Event::Closed || (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Escape))
                 window.close();
+
+            // Quick manual toggles for testing
+            if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::M) {
+                static bool mToggle = false; mToggle = !mToggle; audio.SetMusicVolume(mToggle ? 0.0f : 1.f);
+            }
+            if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::B) {
+                static bool bToggle = false; bToggle = !bToggle; audio.SetBackgroundVolume(bToggle ? 0.1f : 1.f);
+            }
+            if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::P) {
+                // manual psycho toggle
+                psychoMode = !psychoMode;
+                boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
+                audio.SetMusicState(psychoMode ? GameState::Crazy : GameState::Neutral);
+
+                // reset split/input locks on manual switch (mirrors your earlier logic)
+                splitMode = false;
+                inTransition = false;
+                pendingEnable = false;
+                splitClock.restart();
+                nextSplitCheck = randomFloat(1.f, 3.f);
+
+                inputLocked = false;
+                inputLockPending = false;
+                inputLockClock.restart();
+                nextInputLockCheck = randomFloat(3.f, 6.f);
+            }
+            if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num1) {
+                if (dialogueEmitter->buffer) dialogueEmitter->sound.play();
+            }
+            if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num2) {
+                if (effectEmitter->buffer) effectEmitter->sound.play();
+            }
         }
 
+        // Step physics
         world.Step(1.f / 60.f, 8, 3);
 
+        // Grounded check
         bool isGrounded = (contactListener.footContacts > 0);
 
-        // Input-lock logic
+        // -------------------------
+        // Persona timed switching (random)
+        // -------------------------
+        if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
+            psychoMode = !psychoMode;
+            boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
+            nextPsychoSwitch = randomFloat(6.f, 12.f);
+            psychoClock.restart();
+
+            // inform audio manager to change music
+            audio.SetMusicState(psychoMode ? GameState::Crazy : GameState::Neutral);
+
+            // reset split/input-lock cycles
+            splitMode = false;
+            inTransition = false;
+            pendingEnable = false;
+            splitClock.restart();
+            nextSplitCheck = randomFloat(1.f, 3.f);
+
+            inputLocked = false;
+            inputLockPending = false;
+            inputLockClock.restart();
+            nextInputLockCheck = randomFloat(3.f, 6.f);
+        }
+
+        // -------------------------
+        // Input-lock & split mode logic (only active in psycho mode)
+        // -------------------------
         if (psychoMode) {
+            // ---- input-lock logic ----
             float elapsedLock = inputLockClock.getElapsedTime().asSeconds();
 
             if (inputLockPending) {
@@ -152,7 +294,7 @@ int main()
                     inputLockPending = false;
                     inputLocked = true;
                     inputLockClock.restart();
-                    boxShape.setFillColor(Color::Cyan);
+                    boxShape.setFillColor(Color::Cyan); // indicate lock visually
                 }
             }
             else if (!inputLocked) {
@@ -181,15 +323,68 @@ int main()
                     boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
                 }
             }
+
+            // ---- split mode logic ----
+            float elapsedSplit = splitClock.getElapsedTime().asSeconds();
+
+            if (!splitMode && !inTransition) {
+                if (elapsedSplit >= nextSplitCheck) {
+                    if (rand() % 2 == 0) {
+                        inTransition = true;
+                        pendingEnable = true;
+                        transitionClock.restart();
+                    }
+                    else {
+                        splitClock.restart();
+                        nextSplitCheck = randomFloat(1.f, 3.f);
+                    }
+                }
+            }
+
+            if (splitMode && !inTransition) {
+                if (elapsedSplit >= splitDuration) {
+                    inTransition = true;
+                    pendingEnable = false;
+                    transitionClock.restart();
+                }
+            }
+
+            if (inTransition) {
+                float t = transitionClock.getElapsedTime().asSeconds();
+                if (t >= TRANSITION_TIME) {
+                    if (pendingEnable) {
+                        splitMode = true;
+                        splitDuration = randomFloat(2.f, 4.f);
+                        camera.setRotation(180.f); // flip view
+                        splitClock.restart();
+                    }
+                    else {
+                        splitMode = false;
+                        camera.setRotation(0.f);
+                        splitClock.restart();
+                        nextSplitCheck = randomFloat(1.f, 3.f);
+                    }
+                    inTransition = false;
+                    pendingEnable = false;
+                }
+            }
         }
         else {
+            // not psycho
+            splitMode = false;
+            inTransition = false;
+            pendingEnable = false;
+            camera.setRotation(0.f);
+
             inputLocked = false;
             inputLockPending = false;
             inputLockClock.restart();
             nextInputLockCheck = randomFloat(3.f, 6.f);
         }
 
-        // Input
+        // -------------------------
+        // Player input & movement (affected by psycho/inversion/input-lock)
+        // -------------------------
         b2Vec2 vel = box->GetLinearVelocity();
         float moveSpeed = 5.f;
 
@@ -208,12 +403,11 @@ int main()
         else {
             if (psychoMode) {
                 std::swap(leftKey, rightKey);
-
                 // In psycho mode: W does nothing, S jumps
                 jumpKeyW = false;
             }
             else {
-                // In normal mode: S does nothing, W jumps
+                // Normal mode: S does nothing, W jumps
                 jumpKeyS = false;
             }
         }
@@ -223,91 +417,28 @@ int main()
         else if (rightKey) vel.x = moveSpeed;
         else vel.x = 0;
 
-        // Jump mapping: only the allowed key per mode will remain true
+        // Jump mapping
         bool jumpKey = jumpKeyW || jumpKeyS;
-
         if (jumpKey && isGrounded) {
             vel.y = -10.f;
         }
 
         box->SetLinearVelocity(vel);
 
-        // Psycho toggling
-        if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
-            psychoMode = !psychoMode;
-            boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
-            nextPsychoSwitch = randomFloat(6.f, 12.f);
-            psychoClock.restart();
+        // -------------------------
+        // Audio update (listener = player)
+        // -------------------------
+        b2Vec2 playerPos = box->GetPosition();
+        audio.Update(dt, playerPos);
 
-            splitMode = false;
-            inTransition = false;
-            pendingEnable = false;
-            camera.setRotation(0.f);
-            splitClock.restart();
-            nextSplitCheck = randomFloat(1.f, 3.f);
-
-            inputLocked = false;
-            inputLockPending = false;
-            inputLockClock.restart();
-            nextInputLockCheck = randomFloat(3.f, 6.f);
-        }
-
-        // Split mode logic
-        if (psychoMode) {
-            float elapsed = splitClock.getElapsedTime().asSeconds();
-
-            if (!splitMode && !inTransition) {
-                if (elapsed >= nextSplitCheck) {
-                    if (rand() % 2 == 0) {
-                        inTransition = true;
-                        pendingEnable = true;
-                        transitionClock.restart();
-                    }
-                    else {
-                        splitClock.restart();
-                        nextSplitCheck = randomFloat(1.f, 3.f);
-                    }
-                }
-            }
-
-            if (splitMode && !inTransition) {
-                if (elapsed >= splitDuration) {
-                    inTransition = true;
-                    pendingEnable = false;
-                    transitionClock.restart();
-                }
-            }
-
-            if (inTransition) {
-                float t = transitionClock.getElapsedTime().asSeconds();
-                if (t >= TRANSITION_TIME) {
-                    if (pendingEnable) {
-                        splitMode = true;
-                        splitDuration = randomFloat(2.f, 4.f);
-                        camera.setRotation(180.f);
-                        splitClock.restart();
-                    }
-                    else {
-                        splitMode = false;
-                        camera.setRotation(0.f);
-                        splitClock.restart();
-                        nextSplitCheck = randomFloat(1.f, 3.f);
-                    }
-                    inTransition = false;
-                    pendingEnable = false;
-                }
-            }
-        }
-        else {
-            splitMode = false;
-            inTransition = false;
-            pendingEnable = false;
-            camera.setRotation(0.f);
-        }
-
-        // Render
+        // -------------------------
+        // Rendering & camera shake
+        // -------------------------
         b2Vec2 pos = box->GetPosition();
         boxShape.setPosition(pos.x * PPM, pos.y * PPM);
+
+        diagMark.setPosition(dialogueEmitter->position.x * PPM, dialogueEmitter->position.y * PPM);
+        fxMark.setPosition(effectEmitter->position.x * PPM, effectEmitter->position.y * PPM);
 
         Vector2f camCenter = boxShape.getPosition();
         if (inTransition) {
@@ -325,6 +456,20 @@ int main()
         window.clear(Color::Black);
         window.draw(groundShape);
         window.draw(boxShape);
+        window.draw(diagMark);
+        window.draw(fxMark);
+
+        // HUD
+        window.setView(defaultView);
+        std::string s = std::string("PsychoMode: ") + (psychoMode ? "ON" : "OFF") + "\n" +
+            "InputLock: " + (inputLocked ? std::string("LOCKED") : std::string("FREE")) + "\n" +
+            "SplitMode: " + (splitMode ? std::string("ON") : std::string("OFF")) + "\n" +
+            "Controls: A/D move, W jump (inverted when psycho)\n" +
+            "P: force toggle psycho | M: toggle music vol | B: toggle bg vol\n" +
+            "1: play dialogue one-shot | 2: play effect one-shot\n";
+        debugText.setString(s);
+        window.draw(debugText);
+
         window.display();
     }
 
