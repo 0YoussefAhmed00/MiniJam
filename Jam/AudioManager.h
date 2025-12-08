@@ -8,7 +8,6 @@
 #include <algorithm>
 #include <cmath>
 
-enum class GameState { Neutral, Crazy };
 enum class DistanceModelEnum { Linear, InverseSquare, Logarithmic };
 
 struct AudioSettings {
@@ -28,8 +27,9 @@ public:
     void RegisterEmitter(std::shared_ptr<AudioEmitter> e);
     void UnregisterEmitter(const std::string& id);
 
-    // music state
-    void SetMusicState(GameState s);
+    // music crossfade control (driven externally, e.g., by Player state)
+    void CrossfadeToNeutral();
+    void CrossfadeToCrazy();
 
     // volume setters
     void SetMasterVolume(float v);
@@ -49,9 +49,11 @@ private:
     // music
     sf::Music neutralMusic;
     sf::Music crazyMusic;
-    GameState currentMusicState = GameState::Neutral;
-    GameState musicStateTarget = GameState::Neutral;
-    GameState musicState = GameState::Neutral;
+
+    enum class MusicTrack { Neutral, Crazy };
+    MusicTrack m_currentTrack = MusicTrack::Neutral;
+    MusicTrack m_targetTrack = MusicTrack::Neutral;
+
     float crossfadeTime = 1.0f;
     float crossfadeTimer = 0.f;
     bool isCrossfading = false;
@@ -65,8 +67,8 @@ private:
 
     std::vector<std::shared_ptr<AudioEmitter>> emitters;
 
-    sf::Music* musicForState(GameState s);
-    void StartCrossfade(GameState target);
+    sf::Music* musicForTrack(MusicTrack t);
+    void StartCrossfade(MusicTrack target);
     void updateCrossfade(float dt);
 
     float ComputeGain(float distanceMeters, float minD, float maxD);

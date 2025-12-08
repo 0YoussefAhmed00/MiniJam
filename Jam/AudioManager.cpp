@@ -11,10 +11,11 @@ AudioManager::AudioManager() {
     dialogueVolume = 1.f;
     effectsVolume = 1.f;
 
-    musicState = GameState::Neutral;
     crossfadeTime = 1.0f;
     crossfadeTimer = 0.f;
     isCrossfading = false;
+    m_currentTrack = MusicTrack::Neutral;
+    m_targetTrack = MusicTrack::Neutral;
 }
 
 bool AudioManager::loadMusic(const std::string& neutralPath, const std::string& crazyPath) {
@@ -46,12 +47,16 @@ void AudioManager::UnregisterEmitter(const std::string& id) {
         [&](const std::shared_ptr<AudioEmitter>& em) { return em->id == id; }), emitters.end());
 }
 
-void AudioManager::SetMusicState(GameState s) {
-    if (s == musicStateTarget && isCrossfading) return;
-    if (s == currentMusicState && !isCrossfading) return;
+void AudioManager::CrossfadeToNeutral() {
+    if (isCrossfading && m_targetTrack == MusicTrack::Neutral) return;
+    if (!isCrossfading && m_currentTrack == MusicTrack::Neutral) return;
+    StartCrossfade(MusicTrack::Neutral);
+}
 
-    musicStateTarget = s;
-    StartCrossfade(s);
+void AudioManager::CrossfadeToCrazy() {
+    if (isCrossfading && m_targetTrack == MusicTrack::Crazy) return;
+    if (!isCrossfading && m_currentTrack == MusicTrack::Crazy) return;
+    StartCrossfade(MusicTrack::Crazy);
 }
 
 void AudioManager::SetMasterVolume(float v) { masterVolume = std::clamp(v, 0.f, 1.f); applyMusicVolumes(); }
@@ -85,13 +90,13 @@ void AudioManager::PrintVolumes() {
         << " Effects: " << effectsVolume << std::endl;
 }
 
-sf::Music* AudioManager::musicForState(GameState s) {
-    return (s == GameState::Neutral) ? &neutralMusic : &crazyMusic;
+sf::Music* AudioManager::musicForTrack(MusicTrack t) {
+    return (t == MusicTrack::Neutral) ? &neutralMusic : &crazyMusic;
 }
 
-void AudioManager::StartCrossfade(GameState target) {
-    sf::Music* targetMusic = musicForState(target);
-    sf::Music* sourceMusic = musicForState(currentMusicState);
+void AudioManager::StartCrossfade(MusicTrack target) {
+    sf::Music* targetMusic = musicForTrack(target);
+    sf::Music* sourceMusic = musicForTrack(m_currentTrack);
 
     if (targetMusic->getStatus() != sf::Music::Playing)
         targetMusic->play();
@@ -101,8 +106,7 @@ void AudioManager::StartCrossfade(GameState target) {
 
     isCrossfading = true;
     crossfadeTimer = 0.f;
-    musicStateTarget = target;
-    musicState = target;
+    m_targetTrack = target;
 }
 
 void AudioManager::updateCrossfade(float dt) {
@@ -112,8 +116,8 @@ void AudioManager::updateCrossfade(float dt) {
     float t = std::clamp(crossfadeTimer / crossfadeTime, 0.f, 1.f);
     float smoothT = t * t * (3.f - 2.f * t);
 
-    sf::Music* targetMusic = musicForState(musicStateTarget);
-    sf::Music* sourceMusic = musicForState(currentMusicState);
+    sf::Music* targetMusic = musicForTrack(m_targetTrack);
+    sf::Music* sourceMusic = musicForTrack(m_currentTrack);
 
     float sourceVol = (1.f - smoothT) * masterVolume * musicVolume * 100.f;
     float targetVol = (smoothT)*masterVolume * musicVolume * 100.f;
@@ -124,7 +128,7 @@ void AudioManager::updateCrossfade(float dt) {
     if (t >= 1.f - 1e-6f) {
         isCrossfading = false;
         if (sourceMusic != targetMusic) sourceMusic->stop();
-        currentMusicState = musicStateTarget;
+        m_currentTrack = m_targetTrack;
     }
 }
 
@@ -146,6 +150,6 @@ float AudioManager::GetCategoryMultiplier(AudioCategory cat) const {
 
 void AudioManager::applyMusicVolumes() {
     if (!isCrossfading) {
-        musicForState(currentMusicState)->setVolume(masterVolume * musicVolume * 100.f);
+        musicForTrack(m_currentTrack)->setVolume(masterVolume * musicVolume * 100.f);
     }
 }

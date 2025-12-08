@@ -133,6 +133,7 @@
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="AudioManager.cpp" />
     <ClCompile Include="Game.cpp" />
+    <ClCompile Include="MainMenu.cpp" />
     <ClCompile Include="MyContactListener.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="SFML1.cpp" />
@@ -142,6 +143,7 @@
     <ClInclude Include="AudioEmitter.h" />
     <ClInclude Include="AudioManager.h" />
     <ClInclude Include="Game.h" />
+    <ClInclude Include="MainMenu.h" />
     <ClInclude Include="MyContactListener.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Units.h" />

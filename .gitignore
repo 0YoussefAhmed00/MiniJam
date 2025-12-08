@@ -1,14 +1,17 @@
-## Build directories
-[Dd]ebug/
-[Rr]elease/
-x64/
-x86/
-[Bb]uild/
-[Bb]in/
-[Oo]bj/
-ipch/
+# Build directories (anywhere)
+**/[Dd]ebug/
+**/[Rr]elease/
+**/x64/
+**/x86/
+**/[Bb]uild/
+**/[Bb]in/
+**/[Oo]bj/
+**/ipch/
 
-## Visual Studio files
+# Jam folder entirely
+Jam/
+
+# Visual Studio files
 .vs/
 *.vcxproj.user
 *.vcxproj.filters
@@ -21,10 +24,10 @@ ipch/
 *.db
 *.opendb
 
-## Logs
+# Logs
 *.log
 
-## Compiled binaries
+# Compiled binaries
 *.exe
 *.dll
 *.lib
@@ -32,20 +35,19 @@ ipch/
 *.pdb
 *.ilk
 
-## SFML / OpenGL cache files
+# SFML / OpenGL cache files
 *.png.cache
 *.shadercache
 *.obj
 *.mtl
 
-
-## Backup / Temp
+# Backup / Temp
 *.tmp
 *.temp
 *.bak
 *.old
 
-## OS files
+# OS files
 Thumbs.db
 ehthumbs.db
 .DS_Store
