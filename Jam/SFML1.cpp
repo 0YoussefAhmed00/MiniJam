@@ -24,8 +24,8 @@ float randomOffset(float magnitude) {
 class MyContactListener : public b2ContactListener {
 public:
     MyContactListener() : footContacts(0), footFixture(nullptr) {}
-    int footContacts;          // number of contacts on the foot sensor
-    b2Fixture* footFixture;    // pointer to the player's foot sensor fixture
+    int footContacts;
+    b2Fixture* footFixture;
 
     void BeginContact(b2Contact* contact) override {
         b2Fixture* a = contact->GetFixtureA();
@@ -38,7 +38,7 @@ public:
         b2Fixture* b = contact->GetFixtureB();
         if (a == footFixture && !b->IsSensor()) footContacts--;
         if (b == footFixture && !a->IsSensor()) footContacts--;
-        if (footContacts < 0) footContacts = 0; // safety
+        if (footContacts < 0) footContacts = 0;
     }
 };
 
@@ -55,7 +55,6 @@ int main()
     b2Vec2 gravity(0.f, 9.8f);
     b2World world(gravity);
 
-    // attach contact listener
     MyContactListener contactListener;
     world.SetContactListener(&contactListener);
 
@@ -81,7 +80,7 @@ int main()
     boxDef.fixedRotation = true;
     b2Body* box = world.CreateBody(&boxDef);
 
-    // main body box
+    // Main body
     b2PolygonShape dynamicBox;
     dynamicBox.SetAsBox(25 * INV_PPM, 25 * INV_PPM);
 
@@ -91,16 +90,14 @@ int main()
     boxFixture.friction = 0.3f;
     box->CreateFixture(&boxFixture);
 
-    // FOOT SENSOR: thin box at the bottom of the player to detect grounding
+    // Foot sensor
     b2PolygonShape footShape;
-    // half-width, half-height in meters; positioned a bit below center (y offset)
     footShape.SetAsBox((22.f * INV_PPM), (5.f * INV_PPM), b2Vec2(0.f, 25.f * INV_PPM), 0.f);
     b2FixtureDef footFixtureDef;
     footFixtureDef.shape = &footShape;
     footFixtureDef.isSensor = true;
     b2Fixture* footSensor = box->CreateFixture(&footFixtureDef);
 
-    // register the foot sensor in the contact listener
     contactListener.footFixture = footSensor;
 
     RectangleShape boxShape(Vector2f(50.f, 50.f));
@@ -109,10 +106,10 @@ int main()
 
     // Psycho mode
     bool psychoMode = false;
-    float nextPsychoSwitch = randomFloat(6.f, 8.f); // balanced duration (6-8s)
+    float nextPsychoSwitch = randomFloat(6.f, 8.f);
     Clock psychoClock;
 
-    // Split mode & transitions
+    // Split mode
     bool splitMode = false;
     float splitDuration = 0.f;
     float nextSplitCheck = randomFloat(1.f, 3.f);
@@ -124,16 +121,15 @@ int main()
     const float PSYCHO_SHAKE_MAG = 4.f;
     const float TRANSITION_SHAKE_MAG = 20.f;
 
-    // Input-lock variables
-    bool inputLocked = false;               // when true, player input ignored
-    bool inputLockPending = false;          // triggered while airborne; wait until grounded
-    Clock inputLockClock;                   // measures lock duration and checks
-    const float INPUT_LOCK_DURATION = 1.f;  // 1 second input lock
-    float nextInputLockCheck = randomFloat(3.f, 6.f); // when to next consider input-lock
+    // Input-lock logic
+    bool inputLocked = false;
+    bool inputLockPending = false;
+    Clock inputLockClock;
+    const float INPUT_LOCK_DURATION = 1.f;
+    float nextInputLockCheck = randomFloat(3.f, 6.f);
 
     while (window.isOpen())
     {
-        // Event handling
         Event e;
         while (window.pollEvent(e))
         {
@@ -142,22 +138,14 @@ int main()
                 window.close();
         }
 
-        // Step physics first
         world.Step(1.f / 60.f, 8, 3);
 
-        // Determine grounded using the contact listener (true if foot sensor touching something)
         bool isGrounded = (contactListener.footContacts > 0);
 
-        // -------------------------------
-        // Input-lock logic (psychoMode only)
-        // - If a trigger is generated while airborne, it becomes pending.
-        // - Pending triggers activate immediately on the first frame the player becomes grounded,
-        //   BEFORE we read keyboard input so the player cannot beat it.
-        // -------------------------------
+        // Input-lock logic
         if (psychoMode) {
             float elapsedLock = inputLockClock.getElapsedTime().asSeconds();
 
-            // If pending and player just landed -> activate lock now (before reading inputs)
             if (inputLockPending) {
                 if (isGrounded) {
                     inputLockPending = false;
@@ -165,52 +153,42 @@ int main()
                     inputLockClock.restart();
                     boxShape.setFillColor(Color::Cyan);
                 }
-                // If still airborne, do nothing (still pending)
             }
             else if (!inputLocked) {
-                // normal check to see if we should trigger a lock
                 if (elapsedLock >= nextInputLockCheck) {
-                    if (rand() % 2 == 0) { // 50% chance
+                    if (rand() % 2 == 0) {
                         if (isGrounded) {
-                            // activate immediately
                             inputLocked = true;
                             inputLockClock.restart();
                             boxShape.setFillColor(Color::Cyan);
                         }
                         else {
-                            // player is airborne -> make it pending (wait until landing)
                             inputLockPending = true;
-                            // do not restart inputLockClock here; the pending state will wait until grounded
                         }
                     }
                     else {
-                        // didn't trigger: schedule next check
                         inputLockClock.restart();
                         nextInputLockCheck = randomFloat(3.f, 6.f);
                     }
                 }
             }
             else {
-                // currently locked -> check for unlock
                 if (inputLockClock.getElapsedTime().asSeconds() >= INPUT_LOCK_DURATION) {
                     inputLocked = false;
                     inputLockClock.restart();
                     nextInputLockCheck = randomFloat(3.f, 6.f);
-                    // restore color based on psycho state
                     boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
                 }
             }
         }
         else {
-            // psycho off -> reset lock/pending
             inputLocked = false;
             inputLockPending = false;
             inputLockClock.restart();
             nextInputLockCheck = randomFloat(3.f, 6.f);
         }
-        // -------------------------------
 
-        // Read player input AFTER handling pending activation
+        // Input
         b2Vec2 vel = box->GetLinearVelocity();
         float moveSpeed = 5.f;
 
@@ -220,30 +198,30 @@ int main()
         bool jumpKeyS = Keyboard::isKeyPressed(Keyboard::S);
         bool shiftKey = Keyboard::isKeyPressed(Keyboard::LShift) || Keyboard::isKeyPressed(Keyboard::RShift);
 
-        // Apply shift for walk/run
         moveSpeed = (shiftKey ? 2.5f : 5.f);
 
-        // If input is locked → wipe all input
         if (inputLocked) {
             leftKey = rightKey = false;
             jumpKeyW = jumpKeyS = false;
         }
         else {
-            // Psycho mode swaps A<->D and W<->S
             if (psychoMode) {
-                std::swap(leftKey, rightKey);   // swap A and D
-                std::swap(jumpKeyW, jumpKeyS);  // W does nothing, S triggers jump
+                std::swap(leftKey, rightKey);
+
+                // FIXED W/S logic:
+                // W does nothing → force false
+                jumpKeyW = false;
+
+                // S stays as jump
             }
         }
 
-        // Horizontal movement
+        // Movement
         if (leftKey) vel.x = -moveSpeed;
         else if (rightKey) vel.x = moveSpeed;
         else vel.x = 0;
 
-        // Jump logic:
-        // Normal mode: W jumps
-        // Psycho mode: W does nothing, S jumps (after swap above)
+        // Correct jump logic
         bool jumpKey = jumpKeyW || jumpKeyS;
 
         if (jumpKey && isGrounded) {
@@ -252,15 +230,13 @@ int main()
 
         box->SetLinearVelocity(vel);
 
-
-        // Psycho mode switch
+        // Psycho toggling
         if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
             psychoMode = !psychoMode;
             boxShape.setFillColor(psychoMode ? Color::Magenta : Color::Red);
             nextPsychoSwitch = randomFloat(6.f, 12.f);
             psychoClock.restart();
 
-            // Reset split states whenever psycho toggles
             splitMode = false;
             inTransition = false;
             pendingEnable = false;
@@ -268,14 +244,13 @@ int main()
             splitClock.restart();
             nextSplitCheck = randomFloat(1.f, 3.f);
 
-            // Reset input-lock state when psycho toggles
             inputLocked = false;
             inputLockPending = false;
             inputLockClock.restart();
             nextInputLockCheck = randomFloat(3.f, 6.f);
         }
 
-        // Split mode logic (only while psychoMode == true)
+        // Split mode logic
         if (psychoMode) {
             float elapsed = splitClock.getElapsedTime().asSeconds();
 
@@ -328,11 +303,10 @@ int main()
             camera.setRotation(0.f);
         }
 
-        // Update sprite positions
+        // Render
         b2Vec2 pos = box->GetPosition();
         boxShape.setPosition(pos.x * PPM, pos.y * PPM);
 
-        // Camera follows player with shake
         Vector2f camCenter = boxShape.getPosition();
         if (inTransition) {
             camCenter.x += randomOffset(TRANSITION_SHAKE_MAG);
@@ -346,7 +320,6 @@ int main()
         camera.setCenter(camCenter);
         window.setView(camera);
 
-        // Draw
         window.clear(Color::Black);
         window.draw(groundShape);
         window.draw(boxShape);

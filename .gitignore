@@ -1,1 +1,52 @@
+## Build directories
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Bb]uild/
+[Bb]in/
+[Oo]bj/
+ipch/
+
+## Visual Studio files
 .vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.cachefile
+*.db
+*.opendb
+
+## Logs
+*.log
+
+## Compiled binaries
+*.exe
+*.dll
+*.lib
+*.a
+*.pdb
+*.ilk
+
+## SFML / OpenGL cache files
+*.png.cache
+*.shadercache
+*.obj
+*.mtl
+
+
+## Backup / Temp
+*.tmp
+*.temp
+*.bak
+*.old
+
+## OS files
+Thumbs.db
+ehthumbs.db
+.DS_Store
+desktop.ini
