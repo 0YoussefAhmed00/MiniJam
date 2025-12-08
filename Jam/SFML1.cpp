@@ -126,7 +126,7 @@ int main()
     bool inputLocked = false;
     bool inputLockPending = false;
     Clock inputLockClock;
-    const float INPUT_LOCK_DURATION = 1.f;
+    const float INPUT_LOCK_DURATION = 2.f;
     float nextInputLockCheck = randomFloat(3.f, 6.f);
 
     while (window.isOpen())
@@ -209,11 +209,12 @@ int main()
             if (psychoMode) {
                 std::swap(leftKey, rightKey);
 
-                // FIXED W/S logic:
-                // W does nothing → force false
+                // In psycho mode: W does nothing, S jumps
                 jumpKeyW = false;
-
-                // S stays as jump
+            }
+            else {
+                // In normal mode: S does nothing, W jumps
+                jumpKeyS = false;
             }
         }
 
@@ -222,7 +223,7 @@ int main()
         else if (rightKey) vel.x = moveSpeed;
         else vel.x = 0;
 
-        // Correct jump logic
+        // Jump mapping: only the allowed key per mode will remain true
         bool jumpKey = jumpKeyW || jumpKeyS;
 
         if (jumpKey && isGrounded) {
