@@ -23,6 +23,12 @@ public:
     // music loader
     bool loadMusic(const std::string& neutralPath, const std::string& crazyPath);
 
+    // explicit music playback control
+    void StartMusic();   // start current track (neutral by default)
+    void StopMusic();    // stop both tracks
+    void PauseMusic();   // pause both tracks
+    void ResumeMusic();  // resume current track
+
     // emitter control
     void RegisterEmitter(std::shared_ptr<AudioEmitter> e);
     void UnregisterEmitter(const std::string& id);

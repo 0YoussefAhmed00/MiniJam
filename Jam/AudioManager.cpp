@@ -31,11 +31,40 @@ bool AudioManager::loadMusic(const std::string& neutralPath, const std::string& 
     neutralMusic.setLoop(true);
     crazyMusic.setLoop(true);
 
+    // Initialize volumes, but DO NOT start playback here
     neutralMusic.setVolume(masterVolume * musicVolume * 100.f);
     crazyMusic.setVolume(0.f);
-
-    neutralMusic.play();
     return true;
+}
+
+void AudioManager::StartMusic() {
+    // Start the current track (neutral by default)
+    sf::Music* cur = musicForTrack(m_currentTrack);
+    if (cur->getStatus() != sf::Music::Playing) {
+        cur->play();
+        applyMusicVolumes();
+    }
+}
+
+void AudioManager::StopMusic() {
+    neutralMusic.stop();
+    crazyMusic.stop();
+    isCrossfading = false;
+    crossfadeTimer = 0.f;
+    m_targetTrack = m_currentTrack;
+}
+
+void AudioManager::PauseMusic() {
+    if (neutralMusic.getStatus() == sf::Music::Playing) neutralMusic.pause();
+    if (crazyMusic.getStatus() == sf::Music::Playing) crazyMusic.pause();
+}
+
+void AudioManager::ResumeMusic() {
+    sf::Music* cur = musicForTrack(m_currentTrack);
+    if (cur->getStatus() == sf::Music::Paused) {
+        cur->play(); // resumes playback
+        applyMusicVolumes();
+    }
 }
 
 void AudioManager::RegisterEmitter(std::shared_ptr<AudioEmitter> e) {
@@ -98,11 +127,15 @@ void AudioManager::StartCrossfade(MusicTrack target) {
     sf::Music* targetMusic = musicForTrack(target);
     sf::Music* sourceMusic = musicForTrack(m_currentTrack);
 
-    if (targetMusic->getStatus() != sf::Music::Playing)
+    // Ensure both are playing for crossfade
+    if (sourceMusic->getStatus() != sf::Music::Playing) {
+        sourceMusic->play();
+        sourceMusic->setVolume(masterVolume * musicVolume * 100.f);
+    }
+    if (targetMusic->getStatus() != sf::Music::Playing) {
         targetMusic->play();
-
-    sourceMusic->setVolume(masterVolume * musicVolume * 100.f);
-    targetMusic->setVolume(0.f);
+        targetMusic->setVolume(0.f);
+    }
 
     isCrossfading = true;
     crossfadeTimer = 0.f;
