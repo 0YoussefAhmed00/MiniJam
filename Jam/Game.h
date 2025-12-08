@@ -7,6 +7,10 @@
 #include "Units.h"
 #include "AudioManager.h"
 #include "Player.h"
+#include "MainMenu.h"
+
+// Game-wide state
+enum class GameState { MENU, PLAYING, WIN, LOSE, EXIT, CurrentLevel };
 
 class Game {
 public:
@@ -17,7 +21,6 @@ public:
     int Run();
 
 private:
-    // contact listener to detect foot sensor contacts
     class MyContactListener : public b2ContactListener {
     public:
         MyContactListener() : footContacts(0), footFixture(nullptr) {}
@@ -28,7 +31,6 @@ private:
         void EndContact(b2Contact* contact) override;
     };
 
-    // helpers
     void processEvents();
     void update(float dt);
     void render();
@@ -46,6 +48,9 @@ private:
     // Contact listener
     MyContactListener m_contactListener;
 
+    // Game state
+    GameState m_state = GameState::MENU;
+
     // Game objects
     std::unique_ptr<Player> m_player;
 
@@ -59,7 +64,7 @@ private:
     sf::CircleShape m_diagMark;
     sf::CircleShape m_fxMark;
 
-    // Persona / psycho variables (kept same as original)
+    // Persona variables
     bool psychoMode;
     float nextPsychoSwitch;
     sf::Clock psychoClock;
@@ -81,15 +86,21 @@ private:
     static constexpr float INPUT_LOCK_DURATION = 2.f;
     float nextInputLockCheck;
 
-    // Debug text
+    // Debug text / UI
     sf::Font m_font;
     sf::Text m_debugText;
+
+    // Main Menu
+    std::unique_ptr<MainMenu> m_mainMenu;
 
     // Frame clock
     sf::Clock m_frameClock;
 
     // other
     bool m_running;
+
+    // cache last applied player audio state to drive audio manager
+    PlayerAudioState m_lastAppliedAudioState = PlayerAudioState::Neutral;
 };
 
 #endif // GAME_H

@@ -7,6 +7,9 @@
 #include "Units.h"
 #include "Animation.h"
 
+// Audio mood associated with the player, used to drive AudioManager
+enum class PlayerAudioState { Neutral, Crazy };
+
 class Player {
 public:
     // Construct player and create physics body + fixtures in the provided world
@@ -33,6 +36,10 @@ public:
     void SetColor(const sf::Color& c) { m_sprite.setColor(c); }
     void SetOrigin(float ox, float oy) { m_sprite.setOrigin(ox, oy); }
 
+    // Audio mood/state for driving music
+    void SetAudioState(PlayerAudioState s) { m_audioState = s; }
+    PlayerAudioState GetAudioState() const { return m_audioState; }
+
 private:
     b2World* m_world;
     b2Body* m_body;
@@ -44,6 +51,7 @@ private:
 
     // State
     bool m_facingRight;
+    PlayerAudioState m_audioState = PlayerAudioState::Neutral;
 };
 
 #endif // PLAYER_H
