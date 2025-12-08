@@ -112,14 +112,9 @@ Game::Game()
     m_audio.RegisterEmitter(m_dialogueEmitter);
     m_audio.RegisterEmitter(m_effectEmitter);
 
-    if (m_dialogueEmitter->buffer) {
-        m_dialogueEmitter->sound.setLoop(true);
-        m_dialogueEmitter->play();
-    }
-    if (m_effectEmitter->buffer) {
-        m_effectEmitter->sound.setLoop(true);
-        m_effectEmitter->play();
-    }
+    // DO NOT PLAY any sound yet (Main Menu mode)
+    m_dialogueEmitter->sound.setLoop(true);
+    m_effectEmitter->sound.setLoop(true);
 
     m_audio.SetMasterVolume(1.f);
     m_audio.SetMusicVolume(0.9f);
@@ -152,6 +147,16 @@ Game::Game()
     // Wire callbacks
     m_mainMenu->OnPlay = [this]() {
         m_state = GameState::PLAYING;
+
+        // Start music only when the game starts
+        m_audio.StartMusic();
+
+        // Start looping emitters only when game starts
+        if (m_dialogueEmitter->buffer)
+            m_dialogueEmitter->sound.play();
+
+        if (m_effectEmitter->buffer)
+            m_effectEmitter->sound.play();
         };
     m_mainMenu->OnExit = [this]() {
         m_window.close();
@@ -176,6 +181,9 @@ int Game::Run()
             update(dt);
         }
         else {
+            // Ensure music is stopped while in menu
+            m_audio.StopMusic();
+
             // Update menu animations even when not playing
             m_mainMenu->Update(dt, m_window);
         }
@@ -198,7 +206,11 @@ void Game::processEvents()
                 m_window.close();
             }
             else {
+                // Return to menu: stop gameplay audio
                 m_state = GameState::MENU;
+                m_audio.StopMusic();
+                m_dialogueEmitter->stop();
+                m_effectEmitter->stop();
             }
         }
 
