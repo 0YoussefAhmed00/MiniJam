@@ -145,13 +145,16 @@ void MainMenu::BuildLayout()
 
     m_buttons.clear();
     const sf::Vector2f btnSize(320.f, 64.f);
-    const float cx = static_cast<float>(m_windowSize.x) / 2.f;
-    float y = 320.f; // slightly down as requested
-    const float gap = 90.f;
+    const float cx = static_cast<float>(m_windowSize.x) * 0.49f;
 
-    // Create buttons: order matters — index 0 = Play, index 1 = Exit
-    MenuButton play(*m_font, "Play", { cx-30, y+40 }, btnSize);
-    MenuButton exit(*m_font, "Exit", { cx-30, y +40+ gap }, btnSize);
+    // Position buttons relative to screen height
+    float startY = static_cast<float>(m_windowSize.y) * 0.5f;   // move down depending on resolution
+    float gap = static_cast<float>(m_windowSize.y) * 0.10f;      // gap scales automatically
+
+    // Create buttons centered on fullscreen
+    MenuButton play(*m_font, "Play", { cx, startY }, btnSize);
+    MenuButton exit(*m_font, "Exit", { cx, startY + gap }, btnSize);
+
 
     // Do not attach play/exit callbacks to the buttons themselves.
     // We'll handle their actions from MainMenu::OnMousePressed so we can delay them.
