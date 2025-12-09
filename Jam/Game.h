@@ -42,6 +42,11 @@ private:
     sf::View m_camera;
     sf::View m_defaultView;
 
+    // Game.h (inside class Game private section)
+    float m_transitionStartRotation = 0.f;
+    float m_transitionTargetRotation = 0.f;
+
+
     // Physics
     b2Vec2 m_gravity;
     b2World m_world;
