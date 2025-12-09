@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "World.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -58,7 +59,10 @@ Game::Game()
     m_window.setFramerateLimit(60);
     m_world.SetContactListener(&m_contactListener);
 
-    // Physics ground (kept same)
+    // Store World (creates obstacles and holds category bits)
+    m_worldView = std::make_unique<World>(m_world);
+
+    // Ground (Box2D)
     b2BodyDef groundDef;
     groundDef.type = b2_staticBody;
     groundDef.position.Set(640 * INV_PPM, 680 * INV_PPM);
@@ -66,8 +70,14 @@ Game::Game()
 
     b2PolygonShape groundBox;
     groundBox.SetAsBox(2000.0f * INV_PPM, 10.0f * INV_PPM);
-    ground->CreateFixture(&groundBox, 0.f);
 
+    b2FixtureDef groundFix;
+    groundFix.shape = &groundBox;
+    groundFix.filter.categoryBits = m_worldView->CATEGORY_GROUND;
+    groundFix.filter.maskBits = m_worldView->CATEGORY_PLAYER | m_worldView->CATEGORY_SENSOR | m_worldView->CATEGORY_OBSTACLE;
+    ground->CreateFixture(&groundFix);
+
+    // Ground visual
     m_groundShape = RectangleShape(Vector2f(4000.f, 40.f));
     m_groundShape.setOrigin(2000.f, 20.f);
     m_groundShape.setPosition(640.f, 680.f);
@@ -77,7 +87,7 @@ Game::Game()
     m_player = std::make_unique<Player>(&m_world, 640.f, 200.f);
     m_contactListener.footFixture = m_player->GetFootFixture();
 
-    // Audio and emitters
+    // Audio setup...
     m_diagMark.setFillColor(Color::Yellow);
     m_diagMark.setOrigin(8.f, 8.f);
     m_fxMark.setFillColor(Color::Cyan);
@@ -100,19 +110,16 @@ Game::Game()
     m_effectEmitter->baseVolume = 1.f;
 
     m_audio.SetCrossfadeTime(1.2f);
-
     bool ok = m_audio.loadMusic("assets/Audio/music_neutral.ogg", "assets/Audio/music_crazy.ogg");
     if (!ok) std::cerr << "Warning: music not loaded. Replace file paths with your assets.\n";
 
     if (!m_dialogueEmitter->loadBuffer("assets/Audio/dialogue.wav"))
-        std::cerr << "Warning: dialogue.wav not loaded." << std::endl;
+        std::cerr << "Warning: dialogue.wav not loaded.\n";
     if (!m_effectEmitter->loadBuffer("assets/Audio/effect.wav"))
-        std::cerr << "Warning: effect.wav not loaded." << std::endl;
+        std::cerr << "Warning: effect.wav not loaded.\n";
 
     m_audio.RegisterEmitter(m_dialogueEmitter);
     m_audio.RegisterEmitter(m_effectEmitter);
-
-    // DO NOT PLAY any sound yet (Main Menu mode)
     m_dialogueEmitter->sound.setLoop(true);
     m_effectEmitter->sound.setLoop(true);
 
@@ -139,24 +146,15 @@ Game::Game()
     m_debugText.setFillColor(Color::White);
     m_debugText.setPosition(10.f, 10.f);
 
-    // Build MainMenu
     m_mainMenu = std::make_unique<MainMenu>(m_window.getSize());
     m_mainMenu->SetFont(&m_font);
     m_mainMenu->BuildLayout();
 
-    // Wire callbacks
     m_mainMenu->OnPlay = [this]() {
         m_state = GameState::PLAYING;
-
-        // Start music only when the game starts
         m_audio.StartMusic();
-
-        // Start looping emitters only when game starts
-        if (m_dialogueEmitter->buffer)
-            m_dialogueEmitter->sound.play();
-
-        if (m_effectEmitter->buffer)
-            m_effectEmitter->sound.play();
+        if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
+        if (m_effectEmitter->buffer) m_effectEmitter->sound.play();
         };
     m_mainMenu->OnExit = [this]() {
         m_window.close();
@@ -165,9 +163,7 @@ Game::Game()
     m_frameClock.restart();
 }
 
-Game::~Game()
-{
-}
+Game::~Game() {}
 
 int Game::Run()
 {
@@ -177,14 +173,13 @@ int Game::Run()
         processEvents();
 
         if (m_state == GameState::PLAYING) {
-            m_world.Step(1.f / 60.f, 8, 3);
+            // Step physics + sync obstacle shapes via World (avoid double stepping)
+            if (m_worldView) m_worldView->update(dt);
+
             update(dt);
         }
         else {
-            // Ensure music is stopped while in menu
             m_audio.StopMusic();
-
-            // Update menu animations even when not playing
             m_mainMenu->Update(dt, m_window);
         }
 
@@ -200,21 +195,19 @@ void Game::processEvents()
         if (ev.type == Event::Closed)
             m_window.close();
 
-        // Global Escape behavior
         if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Escape) {
             if (m_state == GameState::MENU) {
                 m_window.close();
             }
             else {
-                // Return to menu: stop gameplay audio
                 m_state = GameState::MENU;
                 m_audio.StopMusic();
                 m_dialogueEmitter->stop();
                 m_effectEmitter->stop();
+                if (m_mainMenu) m_mainMenu->ResetMobileVisual();
             }
         }
 
-        // Menu input handling
         if (m_state == GameState::MENU) {
             if (ev.type == Event::MouseMoved) {
                 sf::Vector2i mp = Mouse::getPosition(m_window);
@@ -224,10 +217,9 @@ void Game::processEvents()
                 sf::Vector2i mp = Mouse::getPosition(m_window);
                 m_mainMenu->OnMousePressed(m_window.mapPixelToCoords(mp));
             }
-            continue; // ignore other inputs in menu
+            continue;
         }
 
-        // PLAYING state input
         if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::M) {
             static bool mToggle = false; mToggle = !mToggle; m_audio.SetMusicVolume(mToggle ? 0.0f : 1.f);
         }
@@ -261,6 +253,7 @@ void Game::processEvents()
 
 void Game::update(float dt)
 {
+
     bool isGrounded = (m_contactListener.footContacts > 0);
 
     if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
@@ -456,11 +449,21 @@ void Game::render()
     m_window.setView(m_camera);
 
     m_window.clear(Color::Black);
+
+    // Draw world obstacles first
+    if (m_worldView) {
+        m_worldView->draw(m_window);
+    }
+
+    // Draw ground and player
     m_window.draw(m_groundShape);
     m_player->Draw(m_window);
+
+    // Draw audio emitters debug
     m_window.draw(m_diagMark);
     m_window.draw(m_fxMark);
 
+    // Overlay debug
     m_window.setView(m_defaultView);
     std::string s = std::string("State: PLAYING\n") +
         "PsychoMode: " + (psychoMode ? "ON" : "OFF") + "\n" +

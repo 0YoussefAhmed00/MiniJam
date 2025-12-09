@@ -137,6 +137,7 @@
     <ClCompile Include="MyContactListener.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="SFML1.cpp" />
+    <ClCompile Include="World.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
@@ -147,6 +148,7 @@
     <ClInclude Include="MyContactListener.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Units.h" />
+    <ClInclude Include="World.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

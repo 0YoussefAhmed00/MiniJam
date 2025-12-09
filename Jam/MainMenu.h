@@ -18,7 +18,7 @@ public:
     bool Contains(const sf::Vector2f& p) const { return m_bg.getGlobalBounds().contains(p); }
 
     void SetOnClick(std::function<void()> cb) { m_onClick = std::move(cb); }
-    void Click();
+    void Click();               // triggers optional internal click callback
     void SetEnabled(bool enabled);
 
 private:
@@ -49,14 +49,23 @@ public:
     void SetFont(const sf::Font* font);
     void BuildLayout();
 
+    // note: we keep the window param to match your existing signature
     void Update(float dt, const sf::RenderWindow& window);
     void Render(sf::RenderWindow& window);
 
     void OnMouseMoved(const sf::Vector2f& mousePos);
     void OnMousePressed(const sf::Vector2f& mousePos);
 
+    // Callbacks (set by external code)
     std::function<void()> OnPlay;
     std::function<void()> OnExit;
+
+    // Reset visual state when returning to menu
+    void ResetMobileVisual();
+
+private:
+    // Internal helper to trigger the "press" animation (swap to mobile2 and pulse)
+    void TriggerMobilePressAnim();
 
 private:
     const sf::Font* m_font = nullptr;
@@ -73,9 +82,23 @@ private:
     // Mouse position cache
     sf::Vector2f m_mousePos = { 0.f, 0.f };
 
-    // Simple neon line animation
+    // (optional) neon line member left in header if needed later
     sf::RectangleShape m_neonLine;
     float m_neonPhase = 0.f;
+
+    // Mobile images (Assets/MainMenu/mobile1.png, Assets/MainMenu/mobile2.png)
+    sf::Texture m_mobileTex1;
+    sf::Texture m_mobileTex2;
+    sf::Sprite  m_mobileSprite;
+    bool        m_mobileLoaded = false;
+
+    // 1-second press animation state
+    bool  m_mobilePressed = false;
+    float m_mobilePulse = 0.f;            // seconds elapsed in animation
+    float m_mobilePressDuration = 1.0f;   // animation length (seconds)
+
+    // pending action to call after animation finishes (OnPlay or OnExit)
+    std::function<void()> m_pendingAction = nullptr;
 };
 
 #endif // MAIN_MENU_H

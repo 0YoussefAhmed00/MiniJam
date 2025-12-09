@@ -9,6 +9,8 @@
 #include "Player.h"
 #include "MainMenu.h"
 
+class World; // forward declaration
+
 // Game-wide state
 enum class GameState { MENU, PLAYING, WIN, LOSE, EXIT, CurrentLevel };
 
@@ -17,7 +19,6 @@ public:
     Game();
     ~Game();
 
-    // run the main loop (returns exit code)
     int Run();
 
 private:
@@ -53,6 +54,9 @@ private:
 
     // Game objects
     std::unique_ptr<Player> m_player;
+
+    // World/obstacles
+    std::unique_ptr<World> m_worldView;
 
     // Ground visual
     sf::RectangleShape m_groundShape;
@@ -99,7 +103,6 @@ private:
     // other
     bool m_running;
 
-    // cache last applied player audio state to drive audio manager
     PlayerAudioState m_lastAppliedAudioState = PlayerAudioState::Neutral;
 };
 

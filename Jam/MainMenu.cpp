@@ -82,7 +82,10 @@ void MenuButton::UpdateHover(const sf::Vector2f& mousePos, float dt)
 
 void MenuButton::Click()
 {
-    if (m_enabled && m_hovered && m_onClick) {
+    // local visual feedback (if any) can be placed here.
+    // only call user callback if it's set — but in this Menu we will
+    // not rely on m_onClick for delaying the Play/Exit actions.
+    if (m_onClick) {
         m_onClick();
     }
 }
@@ -94,21 +97,21 @@ void MenuButton::SetEnabled(bool enabled)
     m_text.setFillColor(enabled ? sf::Color::White : sf::Color(200, 200, 200));
 }
 
+/* ---------------- MainMenu ---------------- */
+
 MainMenu::MainMenu(const sf::Vector2u& windowSize)
     : m_windowSize(windowSize)
 {
+    // white background (keeps it simple)
     m_bgGradientTop.setSize(sf::Vector2f(static_cast<float>(windowSize.x), windowSize.y * 0.5f));
     m_bgGradientTop.setPosition(0.f, 0.f);
-    m_bgGradientTop.setFillColor(sf::Color(20, 20, 30));
+    m_bgGradientTop.setFillColor(sf::Color::White);
 
     m_bgGradientBottom.setSize(sf::Vector2f(static_cast<float>(windowSize.x), windowSize.y * 0.5f));
     m_bgGradientBottom.setPosition(0.f, static_cast<float>(windowSize.y) * 0.5f);
-    m_bgGradientBottom.setFillColor(sf::Color(10, 10, 15));
+    m_bgGradientBottom.setFillColor(sf::Color::White);
 
-    m_neonLine.setSize({ static_cast<float>(windowSize.x), 3.f });
-    m_neonLine.setOrigin({ m_neonLine.getSize().x / 2.f, 1.5f });
-    m_neonLine.setPosition(windowSize.x / 2.f, windowSize.y * 0.25f);
-    m_neonLine.setFillColor(sf::Color(120, 70, 255));
+    // neon line intentionally not initialized/drawn per your request to remove it
 }
 
 void MainMenu::SetFont(const sf::Font* font)
@@ -120,47 +123,103 @@ void MainMenu::BuildLayout()
 {
     if (!m_font) return;
 
-    m_title.setFont(*m_font);
-    m_title.setString("MiniJam");
-    m_title.setCharacterSize(64);
-    m_title.setFillColor(sf::Color(220, 220, 255));
-    sf::FloatRect tb = m_title.getLocalBounds();
-    m_title.setOrigin(tb.left + tb.width / 2.f, tb.top + tb.height / 2.f);
-    m_title.setPosition(static_cast<float>(m_windowSize.x) / 2.f, 140.f);
+    // Load mobile images once and center using their native size
+    if (m_mobileTex1.loadFromFile("Assets/MainMenu/mobile1.png") &&
+        m_mobileTex2.loadFromFile("Assets/MainMenu/mobile2.png"))
+    {
+        m_mobileLoaded = true;
+        m_mobileTex1.setSmooth(true);
+        m_mobileTex2.setSmooth(true);
+
+        m_mobileSprite.setTexture(m_mobileTex1, true);
+        const auto sz = m_mobileTex1.getSize();
+        m_mobileSprite.setOrigin(static_cast<float>(sz.x) * 0.5f, static_cast<float>(sz.y) * 0.5f);
+        m_mobileSprite.setPosition(static_cast<float>(m_windowSize.x) * 0.5f, static_cast<float>(m_windowSize.y) * 0.5f);
+        m_mobileSprite.setScale(1.f, 1.f);
+    }
+    else {
+        m_mobileLoaded = false;
+    }
+
+    // Title removed (no "MiniJam" word) — if you want the title back, set m_title here
 
     m_buttons.clear();
     const sf::Vector2f btnSize(320.f, 64.f);
     const float cx = static_cast<float>(m_windowSize.x) / 2.f;
-    float y = 280.f;
+    float y = 320.f; // slightly down as requested
     const float gap = 90.f;
 
-    MenuButton play(*m_font, "Play", { cx, y }, btnSize);
-    MenuButton exit(*m_font, "Exit", { cx, y + gap }, btnSize);
+    // Create buttons: order matters — index 0 = Play, index 1 = Exit
+    MenuButton play(*m_font, "Play", { cx-30, y+40 }, btnSize);
+    MenuButton exit(*m_font, "Exit", { cx-30, y +40+ gap }, btnSize);
 
-    play.SetOnClick([this]() { if (OnPlay) OnPlay(); });
-    exit.SetOnClick([this]() { if (OnExit) OnExit(); });
+    // Do not attach play/exit callbacks to the buttons themselves.
+    // We'll handle their actions from MainMenu::OnMousePressed so we can delay them.
 
     m_buttons.emplace_back(play);
     m_buttons.emplace_back(exit);
 }
 
+void MainMenu::TriggerMobilePressAnim()
+{
+    if (!m_mobileLoaded) return;
+
+    // start the 1 second animation and immediately switch visual to mobile2
+    m_mobilePressed = true;
+    m_mobilePulse = 0.f;
+
+    // show mobile2 texture while animation runs
+    m_mobileSprite.setTexture(m_mobileTex2, true);
+}
+
 void MainMenu::Update(float dt, const sf::RenderWindow& /*window*/)
 {
+    // update hover animation for each button (even when pressing)
     for (auto& b : m_buttons) {
         b.UpdateHover(m_mousePos, dt);
     }
 
-    m_neonPhase += dt * 2.f;
-    float alpha = 140.f + 60.f * std::sin(m_neonPhase);
-    m_neonLine.setFillColor(sf::Color(120, 70, 255, static_cast<sf::Uint8>(std::clamp(alpha, 0.f, 255.f))));
+    // MOBILE PRESS ANIMATION: progress and call pending action after duration
+    if (m_mobilePressed) {
+        m_mobilePulse += dt;
+        float t = std::min(m_mobilePulse / m_mobilePressDuration, 1.f);
+
+        // small pop/scale effect for the duration
+        float scale = 1.f + 0.10f * std::sin(t * 3.1415926f);
+        m_mobileSprite.setScale(scale, scale);
+
+        // optionally fade/other effects could be added here
+
+        if (m_mobilePulse >= m_mobilePressDuration) {
+            // animation finished
+            m_mobilePressed = false;
+            m_mobileSprite.setScale(1.f, 1.f);
+
+            // run pending action (Play or Exit)
+            if (m_pendingAction) {
+                // store and clear before calling to avoid reentrancy issues
+                auto action = m_pendingAction;
+                m_pendingAction = nullptr;
+                action();
+            }
+        }
+    }
+
+    // (If you had a neon animation, it would be updated here — removed earlier)
 }
 
 void MainMenu::Render(sf::RenderWindow& window)
 {
+    // draw white background
     window.draw(m_bgGradientTop);
     window.draw(m_bgGradientBottom);
-    window.draw(m_title);
-    window.draw(m_neonLine);
+
+    // Draw the mobile visual centered and at native size (behind buttons)
+    if (m_mobileLoaded) {
+        window.draw(m_mobileSprite);
+    }
+
+    // draw buttons
     for (auto& b : m_buttons) {
         b.Draw(window);
     }
@@ -173,10 +232,52 @@ void MainMenu::OnMouseMoved(const sf::Vector2f& mousePos)
 
 void MainMenu::OnMousePressed(const sf::Vector2f& mousePos)
 {
+    // ignore clicks while the press animation is running
+    if (m_mobilePressed) return;
+
     m_mousePos = mousePos;
-    for (auto& b : m_buttons) {
+
+    for (size_t i = 0; i < m_buttons.size(); ++i) {
+        MenuButton& b = m_buttons[i];
         if (b.Contains(mousePos)) {
+            // visual/local click (if button has local handler)
             b.Click();
+
+            // start 1 second animation BEFORE invoking the action
+            // determine which button: index 0 => Play, index 1 => Exit
+            if (i == 0 && OnPlay) {
+                m_pendingAction = OnPlay;
+                TriggerMobilePressAnim();
+                // disable buttons while animation runs (prevent double clicks)
+                for (auto& btn : m_buttons) btn.SetEnabled(false);
+            }
+            else if (i == 1 && OnExit) {
+                m_pendingAction = OnExit;
+                TriggerMobilePressAnim();
+                for (auto& btn : m_buttons) btn.SetEnabled(false);
+            }
+
+            // handled the click; break so multiple buttons don't trigger
+            break;
         }
     }
+}
+
+void MainMenu::ResetMobileVisual()
+{
+    // restore to mobile1 and reset animation state
+    m_mobilePressed = false;
+    m_mobilePulse = 0.f;
+    m_pendingAction = nullptr;
+
+    if (m_mobileLoaded) {
+        m_mobileSprite.setTexture(m_mobileTex1, true);
+        const auto sz1 = m_mobileTex1.getSize();
+        m_mobileSprite.setOrigin(static_cast<float>(sz1.x) * 0.5f, static_cast<float>(sz1.y) * 0.5f);
+        m_mobileSprite.setPosition(static_cast<float>(m_windowSize.x) * 0.5f, static_cast<float>(m_windowSize.y) * 0.5f);
+        m_mobileSprite.setScale(1.f, 1.f);
+    }
+
+    // re-enable buttons
+    for (auto& b : m_buttons) b.SetEnabled(true);
 }
