@@ -5,11 +5,13 @@
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+#include <unordered_map>
 
 using namespace sf;
 
 constexpr float PPM = 30.f;
 constexpr float INV_PPM = 1.f / PPM;
+std::unordered_map<std::string, std::shared_ptr<AudioEmitter>> m_playerEmitters;
 
 static float randomFloat(float min, float max) {
     return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
@@ -87,7 +89,7 @@ Game::Game()
     m_player = std::make_unique<Player>(&m_world, 640.f, 200.f);
     m_contactListener.footFixture = m_player->GetFootFixture();
 
-    // Audio setup...
+    // Audio setup
     m_diagMark.setFillColor(Color::Yellow);
     m_diagMark.setOrigin(8.f, 8.f);
     m_fxMark.setFillColor(Color::Cyan);
@@ -128,6 +130,28 @@ Game::Game()
     m_audio.SetBackgroundVolume(0.6f);
     m_audio.SetDialogueVolume(1.f);
     m_audio.SetEffectsVolume(1.f);
+
+    // --- Player emitters ---
+    auto createPlayerEmitter = [&](const std::string& id, const std::string& filePath) {
+        auto emitter = std::make_shared<AudioEmitter>();
+        emitter->id = id;
+        emitter->category = AudioCategory::Effects;
+        emitter->position = m_player->GetBody()->GetPosition();
+        emitter->minDistance = 0.5f;
+        emitter->maxDistance = 20.f;
+        emitter->baseVolume = 1.f;
+
+        if (!emitter->loadBuffer(filePath))
+            std::cerr << "Warning: " << filePath << " not loaded.\n";
+
+        m_audio.RegisterEmitter(emitter);
+        m_playerEmitters[id] = emitter;
+        };
+
+    createPlayerEmitter("refuse", "assets/Audio/refuse.wav");
+    createPlayerEmitter("jump", "assets/Audio/jump.wav");
+    createPlayerEmitter("attack", "assets/Audio/attack.wav");
+    // Add more player sounds as needed
 
     nextPsychoSwitch = randomFloat(6.f, 8.f);
     psychoClock.restart();
@@ -173,11 +197,8 @@ int Game::Run()
         processEvents();
 
         if (m_state == GameState::PLAYING) {
-            // Step physics + sync obstacle shapes via World (avoid double stepping)
             if (m_worldView) m_worldView->update(dt);
-
             update(dt);
-            
         }
         else {
             m_audio.StopMusic();
@@ -251,11 +272,12 @@ void Game::processEvents()
         }
     }
 }
+
 void Game::update(float dt)
 {
-
     bool isGrounded = (m_contactListener.footContacts > 0);
 
+    // Psycho mode switch
     if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
         psychoMode = !psychoMode;
         m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
@@ -275,6 +297,8 @@ void Game::update(float dt)
         inputLockClock.restart();
         nextInputLockCheck = randomFloat(3.f, 6.f);
     }
+
+    static bool refusePlayed = false; // for "refuse" sound once
 
     if (psychoMode) {
         float elapsedLock = inputLockClock.getElapsedTime().asSeconds();
@@ -314,8 +338,19 @@ void Game::update(float dt)
             }
         }
 
-        float elapsedSplit = splitClock.getElapsedTime().asSeconds();
+        // Play "refuse" once when input locked
+        if (inputLocked) {
+            if (!refusePlayed) {
+                m_playerEmitters["refuse"]->sound.play();
+                refusePlayed = true;
+            }
+        }
+        else {
+            refusePlayed = false;
+        }
 
+        // Split mode handling remains unchanged...
+        float elapsedSplit = splitClock.getElapsedTime().asSeconds();
         if (!splitMode && !inTransition) {
             if (elapsedSplit >= nextSplitCheck) {
                 if (rand() % 2 == 0) {
@@ -329,7 +364,6 @@ void Game::update(float dt)
                 }
             }
         }
-
         if (splitMode && !inTransition) {
             if (elapsedSplit >= splitDuration) {
                 inTransition = true;
@@ -337,7 +371,6 @@ void Game::update(float dt)
                 transitionClock.restart();
             }
         }
-
         if (inTransition) {
             float t = transitionClock.getElapsedTime().asSeconds();
             if (t >= TRANSITION_TIME) {
@@ -370,6 +403,7 @@ void Game::update(float dt)
         nextInputLockCheck = randomFloat(3.f, 6.f);
     }
 
+    // Player movement logic
     b2Vec2 vel = m_player->GetLinearVelocity();
     float moveSpeed = 5.f;
 
@@ -408,7 +442,13 @@ void Game::update(float dt)
     m_player->SetLinearVelocity(vel);
     m_player->Update(dt, isGroundedNow);
 
-    // Call World::checkCollision using a rectangle built from the player's main fixture AABB
+    // Update player emitter positions
+    b2Vec2 playerPos = m_player->GetBody()->GetPosition();
+    for (auto& [id, emitter] : m_playerEmitters) {
+        emitter->position = playerPos;
+    }
+
+    // Collision detection
     if (m_worldView && m_player) {
         sf::RectangleShape playerShape;
         b2Body* body = m_player->GetBody();
@@ -429,7 +469,6 @@ void Game::update(float dt)
                     if (v.y < miny) miny = v.y;
                     if (v.y > maxy) maxy = v.y;
                 }
-                // Use the first non-sensor polygon fixture as the player's main body
                 break;
             }
 
@@ -441,7 +480,6 @@ void Game::update(float dt)
                 playerShape.setPosition(((minx + maxx) * 0.5f) * PPM, ((miny + maxy) * 0.5f) * PPM);
             }
             else {
-                // Fallback: 40x40 centered on the body
                 b2Vec2 p = body->GetPosition();
                 playerShape.setSize(sf::Vector2f(40.f, 40.f));
                 playerShape.setOrigin(20.f, 20.f);
@@ -451,6 +489,7 @@ void Game::update(float dt)
         m_worldView->checkCollision(playerShape, m_window);
     }
 
+    // Audio crossfade logic
     PlayerAudioState cur = m_player->GetAudioState();
     if (cur != m_lastAppliedAudioState) {
         if (cur == PlayerAudioState::Crazy) m_audio.CrossfadeToCrazy();
@@ -458,9 +497,9 @@ void Game::update(float dt)
         m_lastAppliedAudioState = cur;
     }
 
-    b2Vec2 playerPos = m_player->GetBody()->GetPosition();
     m_audio.Update(dt, playerPos);
 }
+
 void Game::render()
 {
     if (m_state == GameState::MENU) {
@@ -492,20 +531,16 @@ void Game::render()
 
     m_window.clear(Color::Black);
 
-    // Draw world obstacles first
     if (m_worldView) {
         m_worldView->draw(m_window);
     }
 
-    // Draw ground and player
     m_window.draw(m_groundShape);
     m_player->Draw(m_window);
 
-    // Draw audio emitters debug
     m_window.draw(m_diagMark);
     m_window.draw(m_fxMark);
 
-    // Overlay debug
     m_window.setView(m_defaultView);
     std::string s = std::string("State: PLAYING\n") +
         "PsychoMode: " + (psychoMode ? "ON" : "OFF") + "\n" +
