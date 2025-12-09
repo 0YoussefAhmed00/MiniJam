@@ -515,7 +515,7 @@ void Game::update(float dt)
                 playerShape.setPosition(p.x * PPM, p.y * PPM);
             }
         }
-        m_worldView->checkCollision(playerShape, m_window);
+        m_worldView->checkCollision(playerShape);
     }
 
     // Audio crossfade logic
