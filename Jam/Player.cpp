@@ -1,4 +1,8 @@
 #include "Player.h"
+#include "World.h"
+#include "Game.h"
+
+
 #include <sstream>
 
 using namespace sf;
@@ -15,15 +19,27 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     const float halfWidthPx = gb.width * 0.5f;
     const float halfHeightPx = gb.height * 0.5f;
 
+    // Tune these to control collision box size
+    constexpr float COLLISION_WIDTH_SCALE = 0.45f; // narrower than sprite
+    constexpr float COLLISION_HEIGHT_SCALE = 0.9f;  // nearly full height
+    // Or switch to fixed pixel sizes if preferred:
+    // constexpr float BODY_HALF_WIDTH_PX  = 12.f;
+    // constexpr float BODY_HALF_HEIGHT_PX = 22.f;
+
+    const float bodyHalfWidthPx = halfWidthPx * COLLISION_WIDTH_SCALE;
+    const float bodyHalfHeightPx = halfHeightPx * COLLISION_HEIGHT_SCALE;
+
     b2PolygonShape dynamicBox;
-    dynamicBox.SetAsBox(halfWidthPx * Units::INV_PPM, halfHeightPx * Units::INV_PPM);
+    dynamicBox.SetAsBox(bodyHalfWidthPx * Units::INV_PPM, bodyHalfHeightPx * Units::INV_PPM);
 
     b2FixtureDef boxFixture;
     boxFixture.shape = &dynamicBox;
     boxFixture.density = 1.f;
     boxFixture.friction = 0.3f;
+    boxFixture.filter.categoryBits = 0x0001; // player category (optional: use World::CATEGORY_PLAYER)
     body->CreateFixture(&boxFixture);
 
+    // Foot sensor unchanged
     const float footHalfWidthPx = std::max(4.f, (gb.width - 6.f) * 0.5f);
     const float footHalfHeightPx = std::max(2.f, gb.height * 0.04f);
     const float footOffsetYPx = halfHeightPx;

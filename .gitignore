@@ -34,7 +34,7 @@
 *.ilk
 
 # SFML / OpenGL cache files
-*.png.cache
+*.cache
 *.shadercache
 *.obj
 *.mtl

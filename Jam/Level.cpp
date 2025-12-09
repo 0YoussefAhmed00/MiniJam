@@ -1,102 +1,105 @@
-#include "Game.h"
-#include "World.h"
-
+#include "Level.h"
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
 
-using namespace sf;
-
-constexpr float PPM = 30.f;
-constexpr float INV_PPM = 1.f / PPM;
-
-static float randomFloat(float min, float max) {
-    return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
+static float s_randomFloat(float min, float max) {
+    return min + static_cast<float>(std::rand()) / (static_cast<float>(RAND_MAX / (max - min)));
 }
-static float randomOffset(float magnitude) {
-    return ((rand() % 2000) / 1000.f - 1.f) * magnitude;
+static float s_randomOffset(float magnitude) {
+    return ((std::rand() % 2000) / 1000.f - 1.f) * magnitude;
 }
 
-void Game::MyContactListener::BeginContact(b2Contact* contact) {
-    b2Fixture* a = contact->GetFixtureA();
-    b2Fixture* b = contact->GetFixtureB();
-    if (a == footFixture && !b->IsSensor()) footContacts++;
-    if (b == footFixture && !a->IsSensor()) footContacts++;
-}
-void Game::MyContactListener::EndContact(b2Contact* contact) {
-    b2Fixture* a = contact->GetFixtureA();
-    b2Fixture* b = contact->GetFixtureB();
-    if (a == footFixture && !b->IsSensor()) footContacts--;
-    if (b == footFixture && !a->IsSensor()) footContacts--;
-    if (footContacts < 0) footContacts = 0;
-}
+float Level::randomFloat(float min, float max) { return s_randomFloat(min, max); }
+float Level::randomOffset(float magnitude) { return s_randomOffset(magnitude); }
 
-Game::Game()
-    : m_window(VideoMode(1280, 720), "SFML + Box2D + AudioManager + Persona Demo"),
-    m_camera(FloatRect(0, 0, 1280, 720)),
-    m_defaultView(m_window.getDefaultView()),
-    m_gravity(0.f, 9.8f),
-    m_world(m_gravity),
-    m_player(nullptr),
+Level::Level(Stage initialStage)
+    : m_world(m_gravity),
+    m_stage(initialStage),
     m_diagMark(8.f),
-    m_fxMark(8.f),
-    psychoMode(false),
-    nextPsychoSwitch(0.f),
-    splitMode(false),
-    splitDuration(0.f),
-    nextSplitCheck(0.f),
-    inTransition(false),
-    pendingEnable(false),
-    inputLocked(false),
-    inputLockPending(false),
-    nextInputLockCheck(0.f),
-    m_running(true),
-    m_state(GameState::MENU),
-    m_lastAppliedAudioState(PlayerAudioState::Neutral)
+    m_fxMark(8.f)
 {
-    srand(static_cast<unsigned>(time(nullptr)));
-    m_window.setFramerateLimit(60);
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
+}
+
+Level::~Level() {
+    exit();
+}
+
+void Level::enter(sf::RenderWindow& window) {
+    m_defaultView = window.getDefaultView();
+    m_camera = sf::View(sf::FloatRect(0.f, 0.f, m_defaultView.getSize().x, m_defaultView.getSize().y));
+
+    switch (m_stage) {
+    case Stage::Level1: enterLevel1(window); break;
+    case Stage::Level2: enterLevel2(window); break;
+    }
+    m_frameClock.restart();
+}
+
+void Level::processEvents(sf::RenderWindow& window) {
+    switch (m_stage) {
+    case Stage::Level1: processEventsLevel1(window); break;
+    case Stage::Level2: processEventsLevel2(window); break;
+    }
+}
+
+void Level::update(float dt) {
+    switch (m_stage) {
+    case Stage::Level1: updateLevel1(dt); break;
+    case Stage::Level2: updateLevel2(dt); break;
+    }
+}
+
+void Level::render(sf::RenderWindow& window) {
+    switch (m_stage) {
+    case Stage::Level1: renderLevel1(window); break;
+    case Stage::Level2: renderLevel2(window); break;
+    }
+}
+
+void Level::exit() {
+    switch (m_stage) {
+    case Stage::Level1: exitLevel1(); break;
+    case Stage::Level2: exitLevel2(); break;
+    }
+}
+
+// ---------------- Level1 implementation (migrated from Game.cpp) ----------------
+
+void Level::enterLevel1(sf::RenderWindow& window) {
     m_world.SetContactListener(&m_contactListener);
 
-    // Store World (creates obstacles and holds category bits)
-    m_worldView = std::make_unique<World>(m_world);
-
-    // Ground (Box2D)
+    // Ground physics
     b2BodyDef groundDef;
     groundDef.type = b2_staticBody;
-    groundDef.position.Set(640 * INV_PPM, 680 * INV_PPM);
+    groundDef.position.Set(640.f * Units::INV_PPM, 680.f * Units::INV_PPM);
     b2Body* ground = m_world.CreateBody(&groundDef);
 
     b2PolygonShape groundBox;
-    groundBox.SetAsBox(2000.0f * INV_PPM, 10.0f * INV_PPM);
+    groundBox.SetAsBox(2000.0f * Units::INV_PPM, 10.0f * Units::INV_PPM);
+    ground->CreateFixture(&groundBox, 0.f);
 
-    b2FixtureDef groundFix;
-    groundFix.shape = &groundBox;
-    groundFix.filter.categoryBits = m_worldView->CATEGORY_GROUND;
-    groundFix.filter.maskBits = m_worldView->CATEGORY_PLAYER | m_worldView->CATEGORY_SENSOR | m_worldView->CATEGORY_OBSTACLE;
-    ground->CreateFixture(&groundFix);
-
-    // Ground visual
-    m_groundShape = RectangleShape(Vector2f(4000.f, 40.f));
+    m_groundShape = sf::RectangleShape(sf::Vector2f(4000.f, 40.f));
     m_groundShape.setOrigin(2000.f, 20.f);
     m_groundShape.setPosition(640.f, 680.f);
-    m_groundShape.setFillColor(Color(80, 160, 80));
+    m_groundShape.setFillColor(sf::Color(80, 160, 80));
 
     // Player
     m_player = std::make_unique<Player>(&m_world, 640.f, 200.f);
     m_contactListener.footFixture = m_player->GetFootFixture();
 
-    // Audio setup...
-    m_diagMark.setFillColor(Color::Yellow);
+    // Audio and emitters
+    m_diagMark.setFillColor(sf::Color::Yellow);
     m_diagMark.setOrigin(8.f, 8.f);
-    m_fxMark.setFillColor(Color::Cyan);
+    m_fxMark.setFillColor(sf::Color::Cyan);
     m_fxMark.setOrigin(8.f, 8.f);
 
     m_dialogueEmitter = std::make_shared<AudioEmitter>();
     m_dialogueEmitter->id = "dialogue1";
     m_dialogueEmitter->category = AudioCategory::Dialogue;
-    m_dialogueEmitter->position = b2Vec2((640 - 100) * INV_PPM, (680 - 50) * INV_PPM);
+    m_dialogueEmitter->position = b2Vec2((640.f - 100.f) * Units::INV_PPM, (680.f - 50.f) * Units::INV_PPM);
     m_dialogueEmitter->minDistance = 0.5f;
     m_dialogueEmitter->maxDistance = 20.f;
     m_dialogueEmitter->baseVolume = 1.f;
@@ -104,7 +107,7 @@ Game::Game()
     m_effectEmitter = std::make_shared<AudioEmitter>();
     m_effectEmitter->id = "effect1";
     m_effectEmitter->category = AudioCategory::Effects;
-    m_effectEmitter->position = b2Vec2((640 + 100) * INV_PPM, (680 - 50) * INV_PPM);
+    m_effectEmitter->position = b2Vec2((640.f + 100.f) * Units::INV_PPM, (680.f - 50.f) * Units::INV_PPM);
     m_effectEmitter->minDistance = 0.5f;
     m_effectEmitter->maxDistance = 20.f;
     m_effectEmitter->baseVolume = 1.f;
@@ -114,12 +117,13 @@ Game::Game()
     if (!ok) std::cerr << "Warning: music not loaded. Replace file paths with your assets.\n";
 
     if (!m_dialogueEmitter->loadBuffer("assets/Audio/dialogue.wav"))
-        std::cerr << "Warning: dialogue.wav not loaded.\n";
+        std::cerr << "Warning: dialogue.wav not loaded." << std::endl;
     if (!m_effectEmitter->loadBuffer("assets/Audio/effect.wav"))
-        std::cerr << "Warning: effect.wav not loaded.\n";
+        std::cerr << "Warning: effect.wav not loaded." << std::endl;
 
     m_audio.RegisterEmitter(m_dialogueEmitter);
     m_audio.RegisterEmitter(m_effectEmitter);
+
     m_dialogueEmitter->sound.setLoop(true);
     m_effectEmitter->sound.setLoop(true);
 
@@ -139,96 +143,48 @@ Game::Game()
     inputLockClock.restart();
 
     if (!m_font.loadFromFile("assets/Font/Cairo-VariableFont_slnt,wght.ttf")) {
-        std::cerr << "Warning: font not loaded (assets/arial.ttf)\n";
+        std::cerr << "Warning: font not loaded (assets/Font/Cairo-VariableFont_slnt,wght.ttf)\n";
     }
     m_debugText.setFont(m_font);
     m_debugText.setCharacterSize(16);
-    m_debugText.setFillColor(Color::White);
+    m_debugText.setFillColor(sf::Color::White);
     m_debugText.setPosition(10.f, 10.f);
 
-    m_mainMenu = std::make_unique<MainMenu>(m_window.getSize());
-    m_mainMenu->SetFont(&m_font);
-    m_mainMenu->BuildLayout();
+    // Start music and loop emitters on entering gameplay
+    m_audio.StartMusic();
+    if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
+    if (m_effectEmitter->buffer) m_effectEmitter->sound.play();
 
-    m_mainMenu->OnPlay = [this]() {
-        m_state = GameState::PLAYING;
-        m_audio.StartMusic();
-        if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
-        if (m_effectEmitter->buffer) m_effectEmitter->sound.play();
-        };
-    m_mainMenu->OnExit = [this]() {
-        m_window.close();
-        };
-
-    m_frameClock.restart();
+    // Views
+    m_defaultView = window.getDefaultView();
+    m_camera = sf::View(sf::FloatRect(0.f, 0.f, m_defaultView.getSize().x, m_defaultView.getSize().y));
 }
 
-Game::~Game() {}
-
-int Game::Run()
-{
-    while (m_window.isOpen() && m_running) {
-        float dt = m_frameClock.restart().asSeconds();
-
-        processEvents();
-
-        if (m_state == GameState::PLAYING) {
-            // Step physics + sync obstacle shapes via World (avoid double stepping)
-            if (m_worldView) m_worldView->update(dt);
-
-            update(dt);
-        }
-        else {
-            m_audio.StopMusic();
-            m_mainMenu->Update(dt, m_window);
+void Level::processEventsLevel1(sf::RenderWindow& window) {
+    sf::Event ev;
+    while (window.pollEvent(ev)) {
+        if (ev.type == sf::Event::Closed) {
+            window.close();
         }
 
-        render();
-    }
-    return 0;
-}
-
-void Game::processEvents()
-{
-    Event ev;
-    while (m_window.pollEvent(ev)) {
-        if (ev.type == Event::Closed)
-            m_window.close();
-
-        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Escape) {
-            if (m_state == GameState::MENU) {
-                m_window.close();
-            }
-            else {
-                m_state = GameState::MENU;
-                m_audio.StopMusic();
-                m_dialogueEmitter->stop();
-                m_effectEmitter->stop();
-                if (m_mainMenu) m_mainMenu->ResetMobileVisual();
-            }
+        // Escape: request return to menu
+        if (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::Escape) {
+            m_returnToMenu = true;
+            m_complete = true;
         }
 
-        if (m_state == GameState::MENU) {
-            if (ev.type == Event::MouseMoved) {
-                sf::Vector2i mp = Mouse::getPosition(m_window);
-                m_mainMenu->OnMouseMoved(m_window.mapPixelToCoords(mp));
-            }
-            if (ev.type == Event::MouseButtonPressed && ev.mouseButton.button == Mouse::Left) {
-                sf::Vector2i mp = Mouse::getPosition(m_window);
-                m_mainMenu->OnMousePressed(m_window.mapPixelToCoords(mp));
-            }
-            continue;
+        // Audio toggles and psycho toggle
+        if (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::M) {
+            static bool mToggle = false; mToggle = !mToggle;
+            m_audio.SetMusicVolume(mToggle ? 0.0f : 1.f);
         }
-
-        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::M) {
-            static bool mToggle = false; mToggle = !mToggle; m_audio.SetMusicVolume(mToggle ? 0.0f : 1.f);
+        if (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::B) {
+            static bool bToggle = false; bToggle = !bToggle;
+            m_audio.SetBackgroundVolume(bToggle ? 0.1f : 1.f);
         }
-        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::B) {
-            static bool bToggle = false; bToggle = !bToggle; m_audio.SetBackgroundVolume(bToggle ? 0.1f : 1.f);
-        }
-        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::P) {
+        if (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::P) {
             psychoMode = !psychoMode;
-            m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
+            m_player->SetColor(psychoMode ? sf::Color::Magenta : sf::Color::Red);
             m_player->SetAudioState(psychoMode ? PlayerAudioState::Crazy : PlayerAudioState::Neutral);
 
             splitMode = false;
@@ -242,23 +198,24 @@ void Game::processEvents()
             inputLockClock.restart();
             nextInputLockCheck = randomFloat(3.f, 6.f);
         }
-        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num1) {
+        if (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::Num1) {
             if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
         }
-        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num2) {
+        if (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::Num2) {
             if (m_effectEmitter->buffer) m_effectEmitter->sound.play();
         }
     }
 }
 
-void Game::update(float dt)
-{
+void Level::updateLevel1(float dt) {
+    // Physics step
+    m_world.Step(1.f / 60.f, 8, 3);
 
     bool isGrounded = (m_contactListener.footContacts > 0);
 
     if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
         psychoMode = !psychoMode;
-        m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
+        m_player->SetColor(psychoMode ? sf::Color::Magenta : sf::Color::Red);
         m_player->SetAudioState(psychoMode ? PlayerAudioState::Crazy : PlayerAudioState::Neutral);
 
         nextPsychoSwitch = randomFloat(6.f, 12.f);
@@ -284,16 +241,16 @@ void Game::update(float dt)
                 inputLockPending = false;
                 inputLocked = true;
                 inputLockClock.restart();
-                m_player->SetColor(Color::Cyan);
+                m_player->SetColor(sf::Color::Cyan);
             }
         }
         else if (!inputLocked) {
             if (elapsedLock >= nextInputLockCheck) {
-                if (rand() % 2 == 0) {
+                if (std::rand() % 2 == 0) {
                     if (isGrounded) {
                         inputLocked = true;
                         inputLockClock.restart();
-                        m_player->SetColor(Color::Cyan);
+                        m_player->SetColor(sf::Color::Cyan);
                     }
                     else {
                         inputLockPending = true;
@@ -310,7 +267,7 @@ void Game::update(float dt)
                 inputLocked = false;
                 inputLockClock.restart();
                 nextInputLockCheck = randomFloat(3.f, 6.f);
-                m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
+                m_player->SetColor(psychoMode ? sf::Color::Magenta : sf::Color::Red);
             }
         }
 
@@ -318,7 +275,7 @@ void Game::update(float dt)
 
         if (!splitMode && !inTransition) {
             if (elapsedSplit >= nextSplitCheck) {
-                if (rand() % 2 == 0) {
+                if (std::rand() % 2 == 0) {
                     inTransition = true;
                     pendingEnable = true;
                     transitionClock.restart();
@@ -370,14 +327,15 @@ void Game::update(float dt)
         nextInputLockCheck = randomFloat(3.f, 6.f);
     }
 
+    // Input and player movement
     b2Vec2 vel = m_player->GetLinearVelocity();
     float moveSpeed = 5.f;
 
-    bool leftKey = Keyboard::isKeyPressed(Keyboard::A);
-    bool rightKey = Keyboard::isKeyPressed(Keyboard::D);
-    bool jumpKeyW = Keyboard::isKeyPressed(Keyboard::W);
-    bool jumpKeyS = Keyboard::isKeyPressed(Keyboard::S);
-    bool shiftKey = Keyboard::isKeyPressed(Keyboard::LShift) || Keyboard::isKeyPressed(Keyboard::RShift);
+    bool leftKey = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
+    bool rightKey = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
+    bool jumpKeyW = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+    bool jumpKeyS = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+    bool shiftKey = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
 
     moveSpeed = (shiftKey ? 5.f : 10.f);
 
@@ -419,24 +377,15 @@ void Game::update(float dt)
     m_audio.Update(dt, playerPos);
 }
 
-void Game::render()
-{
-    if (m_state == GameState::MENU) {
-        m_window.setView(m_defaultView);
-        m_window.clear(Color(20, 20, 30));
-        m_mainMenu->Render(m_window);
-        m_window.display();
-        return;
-    }
-
+void Level::renderLevel1(sf::RenderWindow& window) {
     m_player->SyncGraphics();
 
-    m_diagMark.setPosition(m_dialogueEmitter->position.x * PPM, m_dialogueEmitter->position.y * PPM);
-    m_fxMark.setPosition(m_effectEmitter->position.x * PPM, m_effectEmitter->position.y * PPM);
+    m_diagMark.setPosition(m_dialogueEmitter->position.x * Units::PPM, m_dialogueEmitter->position.y * Units::PPM);
+    m_fxMark.setPosition(m_effectEmitter->position.x * Units::PPM, m_effectEmitter->position.y * Units::PPM);
 
     b2Vec2 pos = m_player->GetBody()->GetPosition();
-    Vector2f playerPosPixels(pos.x * PPM, pos.y * PPM);
-    Vector2f camCenter = playerPosPixels;
+    sf::Vector2f playerPosPixels(pos.x * Units::PPM, pos.y * Units::PPM);
+    sf::Vector2f camCenter = playerPosPixels;
     if (inTransition) {
         camCenter.x += randomOffset(TRANSITION_SHAKE_MAG);
         camCenter.y += randomOffset(TRANSITION_SHAKE_MAG);
@@ -446,25 +395,15 @@ void Game::render()
         camCenter.y += randomOffset(PSYCHO_SHAKE_MAG);
     }
     m_camera.setCenter(camCenter);
-    m_window.setView(m_camera);
+    window.setView(m_camera);
 
-    m_window.clear(Color::Black);
+    window.clear(sf::Color::Black);
+    window.draw(m_groundShape);
+    m_player->Draw(window);
+    window.draw(m_diagMark);
+    window.draw(m_fxMark);
 
-    // Draw world obstacles first
-    if (m_worldView) {
-        m_worldView->draw(m_window);
-    }
-
-    // Draw ground and player
-    m_window.draw(m_groundShape);
-    m_player->Draw(m_window);
-
-    // Draw audio emitters debug
-    m_window.draw(m_diagMark);
-    m_window.draw(m_fxMark);
-
-    // Overlay debug
-    m_window.setView(m_defaultView);
+    window.setView(m_defaultView);
     std::string s = std::string("State: PLAYING\n") +
         "PsychoMode: " + (psychoMode ? "ON" : "OFF") + "\n" +
         "InputLock: " + (inputLocked ? std::string("LOCKED") : std::string("FREE")) + "\n" +
@@ -474,7 +413,31 @@ void Game::render()
         "1: play dialogue one-shot | 2: play effect one-shot\n" +
         "ESC: back to menu";
     m_debugText.setString(s);
-    m_window.draw(m_debugText);
+    window.draw(m_debugText);
 
-    m_window.display();
+    window.display();
+}
+
+void Level::exitLevel1() {
+    m_audio.StopMusic();
+    if (m_dialogueEmitter) m_dialogueEmitter->stop();
+    if (m_effectEmitter) m_effectEmitter->stop();
+    m_player.reset();
+}
+
+// ---------------- Level2 stubs (for later) ----------------
+void Level::enterLevel2(sf::RenderWindow& window) {
+    (void)window;
+    // TODO: implement Level2 later
+}
+void Level::processEventsLevel2(sf::RenderWindow& window) {
+    (void)window;
+}
+void Level::updateLevel2(float dt) {
+    (void)dt;
+}
+void Level::renderLevel2(sf::RenderWindow& window) {
+    (void)window;
+}
+void Level::exitLevel2() {
 }
