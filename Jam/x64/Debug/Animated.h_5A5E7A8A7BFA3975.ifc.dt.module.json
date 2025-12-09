@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\Animated.obj",
+            "outputs": [
+                "x64\\Debug\\Animated.h_5A5E7A8A7BFA3975.ifc.dt.module.json",
+                "x64\\Debug\\Animated.h_5A5E7A8A7BFA3975.ifc.dt.d.json",
+                "x64\\Debug\\Animated.h.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "D:\\ItiProblemsolving\\Jam\\Jam\\Animated.h",
+                    "source-path": "d:\\itiproblemsolving\\jam\\jam\\animated.h",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

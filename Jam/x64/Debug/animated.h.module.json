@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\Animated.h.obj",
+            "outputs": [
+                "D:\\ItiProblemsolving\\Jam\\Jam\\x64\\Debug\\vc143.pdb",
+                "x64\\Debug\\",
+                "D:\\ItiProblemsolving\\Jam\\Jam\\x64\\Debug\\Animated.h.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "Animated.h",
+                    "source-path": "d:\\itiproblemsolving\\jam\\jam\\animated.h",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

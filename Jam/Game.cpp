@@ -75,7 +75,7 @@ Game::Game()
     b2Body* ground = m_world.CreateBody(&groundDef);
 
     b2PolygonShape groundBox;
-    groundBox.SetAsBox(2000.0f * INV_PPM, 10.0f * INV_PPM);
+    groundBox.SetAsBox(2000.0f *10* INV_PPM, 10.0f * INV_PPM);
 
     b2FixtureDef groundFix;
     groundFix.shape = &groundBox;
@@ -84,8 +84,8 @@ Game::Game()
     ground->CreateFixture(&groundFix);
 
     // Ground visual
-    m_groundShape = RectangleShape(Vector2f(4000.f, 40.f));
-    m_groundShape.setOrigin(2000.f, 20.f);
+    m_groundShape = RectangleShape(Vector2f(4000.f*10, 40.f));
+    m_groundShape.setOrigin(2000.f*10, 20.f);
     m_groundShape.setPosition(640.f, 680.f);
     m_groundShape.setFillColor(Color(80, 160, 80));
 
@@ -179,6 +179,28 @@ Game::Game()
     m_mainMenu->BuildLayout();
 
     m_mainMenu->OnPlay = [this]() {
+        // Reset gameplay state and timers before starting
+        psychoMode = false;
+        m_player->SetColor(sf::Color::Red);
+        m_player->SetAudioState(PlayerAudioState::Neutral);
+        m_lastAppliedAudioState = PlayerAudioState::Neutral;
+
+        splitMode = false;
+        inTransition = false;
+        pendingEnable = false;
+        m_camera.setRotation(0.f);
+
+        nextPsychoSwitch = randomFloat(6.f, 8.f);
+        psychoClock.restart();
+
+        nextSplitCheck = randomFloat(1.f, 3.f);
+        splitClock.restart();
+
+        inputLocked = false;
+        inputLockPending = false;
+        nextInputLockCheck = randomFloat(3.f, 6.f);
+        inputLockClock.restart();
+
         m_state = GameState::PLAYING;
         m_audio.StartMusic();
         if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
@@ -187,7 +209,153 @@ Game::Game()
     m_mainMenu->OnExit = [this]() {
         m_window.close();
         };
+    m_mainMenu->OnOptions = [this]() {
+        // Fullscreen modal Options window
+        const auto desktop = sf::VideoMode::getDesktopMode();
+        sf::RenderWindow opts(desktop, "Options", sf::Style::Fullscreen);
+        opts.setFramerateLimit(60);
 
+        // ------------------------------------
+        // Load Controls image
+        // ------------------------------------
+        sf::Texture controlsTex;
+        controlsTex.loadFromFile("Assets/MainMenu/Controls.png");
+        sf::Sprite controlsSprite(controlsTex);
+
+        // Scale + center image (keeps aspect ratio)
+        float maxWidth = desktop.width * 0.5f;
+        float scale = maxWidth / controlsTex.getSize().x;
+        controlsSprite.setScale(scale, scale);
+        controlsSprite.setPosition(
+            desktop.width * 0.5f - controlsSprite.getGlobalBounds().width * 0.5f,
+            desktop.height * 0.15f
+        );
+
+        // ------------------------------------
+        // Master Volume Slider Only
+        // ------------------------------------
+        float masterValue = 1.0f;
+        m_audio.SetMasterVolume(masterValue);
+
+        sf::Text volLabel("Master Vol", m_font, 42);
+        volLabel.setFillColor(sf::Color::White);
+        volLabel.setPosition(60.f, desktop.height * 0.55f);
+
+        sf::Text volValueText("", m_font, 32);
+        volValueText.setFillColor(sf::Color(200, 200, 200));
+        volValueText.setPosition(60.f, desktop.height * 0.62f);
+
+        const float sliderX = 60.f;
+        const float sliderY = desktop.height * 0.70f;
+        const float sliderWidth = desktop.width - 120.f;
+        const float sliderHeight = 10.f;
+
+        sf::RectangleShape sliderBar(sf::Vector2f(sliderWidth, sliderHeight));
+        sliderBar.setPosition(sliderX, sliderY);
+        sliderBar.setFillColor(sf::Color(100, 100, 140));
+
+        sf::RectangleShape sliderFill(sf::Vector2f(sliderWidth * masterValue, sliderHeight));
+        sliderFill.setPosition(sliderX, sliderY);
+        sliderFill.setFillColor(sf::Color(120, 180, 255));
+
+        const float knobRadius = 18.f;
+        sf::CircleShape sliderKnob(knobRadius);
+        sliderKnob.setFillColor(sf::Color(240, 240, 240));
+        sliderKnob.setOutlineThickness(2.f);
+        sliderKnob.setOutlineColor(sf::Color(80, 80, 120));
+
+        auto knobCenterX = sliderX + sliderWidth * masterValue;
+        sliderKnob.setPosition(knobCenterX - knobRadius, sliderY + sliderHeight / 2.f - knobRadius);
+
+        bool dragging = false;
+
+        auto updateSliderUI = [&](float value) {
+            masterValue = std::clamp(value, 0.f, 1.f);
+            m_audio.SetMasterVolume(masterValue);
+
+            sliderFill.setSize(sf::Vector2f(sliderWidth * masterValue, sliderHeight));
+            float cx = sliderX + sliderWidth * masterValue;
+            sliderKnob.setPosition(cx - knobRadius, sliderY + sliderHeight / 2.f - knobRadius);
+
+            int percent = static_cast<int>(std::round(masterValue * 100.f));
+            volValueText.setString(std::to_string(percent) + "%");
+            };
+
+        updateSliderUI(masterValue);
+
+        // ------------------------------------
+        // Exit animation (same as before)
+        // ------------------------------------
+        bool exiting = false;
+        sf::Clock exitClock;
+        const float exitDuration = 0.35f;
+        sf::RectangleShape fadeOverlay(sf::Vector2f((float)desktop.width, (float)desktop.height));
+        fadeOverlay.setFillColor(sf::Color(0, 0, 0, 0));
+
+        while (opts.isOpen()) {
+            sf::Event ev;
+            while (opts.pollEvent(ev)) {
+                if (exiting) continue;
+
+                if (ev.type == sf::Event::Closed ||
+                    (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::Escape)) {
+                    exiting = true;
+                    exitClock.restart();
+                }
+
+                if (ev.type == sf::Event::MouseButtonPressed && ev.mouseButton.button == sf::Mouse::Left) {
+                    sf::Vector2f mp((float)ev.mouseButton.x, (float)ev.mouseButton.y);
+                    sf::FloatRect sliderBounds(sliderX, sliderY - 20.f, sliderWidth, sliderHeight + 40.f);
+
+                    if (sliderBounds.contains(mp)) {
+                        dragging = true;
+                        float newVal = (mp.x - sliderX) / sliderWidth;
+                        updateSliderUI(newVal);
+                    }
+                }
+
+                if (ev.type == sf::Event::MouseButtonReleased &&
+                    ev.mouseButton.button == sf::Mouse::Left) {
+                    dragging = false;
+                }
+
+                if (ev.type == sf::Event::MouseMoved && dragging) {
+                    sf::Vector2f mp((float)ev.mouseMove.x, (float)ev.mouseMove.y);
+                    float newVal = (mp.x - sliderX) / sliderWidth;
+                    updateSliderUI(newVal);
+                }
+            }
+
+            // fade out animation
+            if (exiting) {
+                float t = std::min(exitClock.getElapsedTime().asSeconds() / exitDuration, 1.f);
+                float ease = t * t * (3.f - 2.f * t);
+                uint8_t alpha = (uint8_t)(255.f * ease);
+                fadeOverlay.setFillColor(sf::Color(0, 0, 0, alpha));
+
+                if (t >= 1.f) {
+                    opts.close();
+                    break;
+                }
+            }
+
+            opts.clear(sf::Color(30, 30, 40));
+            opts.draw(controlsSprite);
+            opts.draw(volLabel);
+            opts.draw(volValueText);
+            opts.draw(sliderBar);
+            opts.draw(sliderFill);
+            opts.draw(sliderKnob);
+            if (exiting) opts.draw(fadeOverlay);
+            opts.display();
+        }
+
+        if (m_mainMenu) {
+            m_mainMenu->ResetMobileVisual();
+        }
+        };
+
+        
     m_frameClock.restart();
 }
 
@@ -231,6 +399,28 @@ void Game::processEvents()
                 m_dialogueEmitter->stop();
                 m_effectEmitter->stop();
                 if (m_mainMenu) m_mainMenu->ResetMobileVisual();
+
+                // Reset gameplay state and timers while in menu so they don't accumulate
+                psychoMode = false;
+                m_player->SetColor(sf::Color::Red);
+                m_player->SetAudioState(PlayerAudioState::Neutral);
+                m_lastAppliedAudioState = PlayerAudioState::Neutral;
+
+                splitMode = false;
+                inTransition = false;
+                pendingEnable = false;
+                m_camera.setRotation(0.f);
+
+                nextPsychoSwitch = randomFloat(6.f, 8.f);
+                psychoClock.restart();
+
+                nextSplitCheck = randomFloat(1.f, 3.f);
+                splitClock.restart();
+
+                inputLocked = false;
+                inputLockPending = false;
+                nextInputLockCheck = randomFloat(3.f, 6.f);
+                inputLockClock.restart();
             }
         }
 

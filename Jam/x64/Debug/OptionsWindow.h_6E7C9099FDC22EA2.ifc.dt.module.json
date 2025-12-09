@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Debug\\OptionsWindow.obj",
+            "outputs": [
+                "x64\\Debug\\OptionsWindow.h_6E7C9099FDC22EA2.ifc.dt.module.json",
+                "x64\\Debug\\OptionsWindow.h_6E7C9099FDC22EA2.ifc.dt.d.json",
+                "x64\\Debug\\OptionsWindow.h.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "D:\\ItiProblemsolving\\Jam\\Jam\\OptionsWindow.h",
+                    "source-path": "d:\\itiproblemsolving\\jam\\jam\\optionswindow.h",
+                    "lookup-method": "absolute"
+                }
+            ],
+            "requires": []
+        }
+    ]
+}

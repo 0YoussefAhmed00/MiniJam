@@ -6,6 +6,9 @@
 
 using namespace sf;
 
+// ------------------------------------------------------------
+//  FIXTURE REBUILD (unchanged)
+// ------------------------------------------------------------
 static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture, const sf::Sprite& sprite)
 {
     for (b2Fixture* f = body->GetFixtureList(); f; ) {
@@ -52,6 +55,9 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     footFixture = body->CreateFixture(&footFixtureDef);
 }
 
+// ------------------------------------------------------------
+//  CONSTRUCTOR
+// ------------------------------------------------------------
 Player::Player(b2World* world, float startX, float startY)
     : m_world(world),
     m_body(nullptr),
@@ -71,45 +77,75 @@ Player::Player(b2World* world, float startX, float startY)
     m_anim.BindSprite(&m_sprite);
     m_sprite.setScale(0.25f, 0.25f);
 
-    // Run frames
-    std::vector<std::string> runPaths;
-    runPaths.reserve(8);
-    const std::string baseRun = "Assets/Player/Run/";
-    for (int i = 1; i <= 8; ++i) {
-        runPaths.emplace_back(baseRun + "Run" + std::to_string(i) + ".png");
-    }
-    bool okRun = m_anim.AddClip("Run", runPaths, 0.08f, true);
+    // -----------------------------------------------------
+    //        NORMAL ANIMATIONS (sprite only, no tint)
+    // -----------------------------------------------------
 
-    // Walk frames (Shift)
-    std::vector<std::string> walkPaths;
-    walkPaths.reserve(7);
-    const std::string baseWalk = "Assets/Player/Walk/";
-    for (int i = 1; i <= 7; ++i) {
-        walkPaths.emplace_back(baseWalk + "Walk" + std::to_string(i) + ".png");
-    }
-    bool okWalk = m_anim.AddClip("Walk", walkPaths, 0.10f, true);
-
-    // Idle frame (single)
-    const std::string baseIdle = "Assets/Player/Run/";
-    std::vector<std::string> idlePaths = { baseIdle + "Idle.png" };
-    bool okIdle = m_anim.AddClip("Idle", idlePaths, 0.2f, true);
-
-    if (!okRun && !okIdle && !okWalk) {
-        sf::Image img;
-        img.create(50, 50, Color::Red);
-        sf::Texture t;
-        t.loadFromImage(img);
-        t.setSmooth(true);
-        m_sprite.setTexture(t);
-        m_sprite.setOrigin(25.f, 25.f);
-    }
-    else {
-        // Prefer Idle if available
-        m_anim.SetClip(okIdle ? "Idle" : (okWalk ? "Walk" : "Run"), true);
+    // Run
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Run/";
+        for (int i = 1; i <= 8; i++)
+            paths.push_back(base + "Run" + std::to_string(i) + ".png");
+        m_anim.AddClip("Run", paths, 0.08f, true);
     }
 
-    m_sprite.setColor(Color::Red);
+    // Walk
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Walk/";
+        for (int i = 1; i <= 7; i++)
+            paths.push_back(base + "Walk" + std::to_string(i) + ".png");
+        m_anim.AddClip("Walk", paths, 0.10f, true);
+    }
+
+    // Idle
+    {
+        std::vector<std::string> paths = { "Assets/Player/Run/Idle.png" };
+        m_anim.AddClip("Idle", paths, 0.2f, true);
+    }
+
+    // Jump
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Jump/";
+        for (int i = 1; i <= 6; i++)
+            paths.push_back(base + std::to_string(i) + ".png");
+        m_anim.AddClip("Jump", paths, 0.10f, false);
+    }
+
+    // Angry variants are kept available (no color trigger), use programmatic state if needed
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Angry walk/";
+        for (int i = 1; i <= 7; i++)
+            paths.push_back(base + std::to_string(i) + ".png");
+        m_anim.AddClip("AngryWalk", paths, 0.10f, true);
+    }
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Angry run/";
+        for (int i = 1; i <= 8; i++)
+            paths.push_back(base + std::to_string(i) + ".png");
+        m_anim.AddClip("AngryRun", paths, 0.08f, true);
+    }
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Angry jump/";
+        for (int i = 1; i <= 3; i++)
+            paths.push_back(base + std::to_string(i) + ".png");
+        m_anim.AddClip("AngryJump", paths, 0.10f, false);
+    }
+    {
+        std::vector<std::string> paths = { "Assets/Player/Angry walk/Q.png" };
+        m_anim.AddClip("AngryIdle", paths, 0.2f, true);
+    }
+
+    m_anim.SetClip("Idle", true);
     m_anim.SetFacingRight(true);
+
+    // Ensure no tint is applied; use sprite’s original texture colors
+    m_sprite.setColor(sf::Color::White);
 
     CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
     SyncGraphics();
@@ -121,44 +157,60 @@ Player::~Player()
     m_footFixture = nullptr;
 }
 
-void Player::Update(float dt, bool /*grounded*/)
+// ------------------------------------------------------------
+//  UPDATE
+// ------------------------------------------------------------
+void Player::Update(float dt, bool grounded)
 {
     if (!m_body) return;
+
     b2Vec2 vel = m_body->GetLinearVelocity();
 
-    if (vel.x > 0.01f) {
-        if (!m_facingRight) { m_facingRight = true; m_anim.SetFacingRight(true); }
+    // Facing
+    if (vel.x > 0.01f && !m_facingRight) {
+        m_facingRight = true;
+        m_anim.SetFacingRight(true);
     }
-    else if (vel.x < -0.01f) {
-        if (m_facingRight) { m_facingRight = false; m_anim.SetFacingRight(false); }
-    }
-
-    const float moveEpsilon = 0.05f;
-    const bool isMoving = std::abs(vel.x) > moveEpsilon;
-
-    // Choose clip: Idle, Walk (Shift), Run
-    std::string desiredClip;
-    if (!isMoving) {
-        desiredClip = "Idle";
-    }
-    else {
-        desiredClip = m_isWalking ? "Walk" : "Run";
+    else if (vel.x < -0.01f && m_facingRight) {
+        m_facingRight = false;
+        m_anim.SetFacingRight(false);
     }
 
-    const bool clipChanged = (m_anim.CurrentClip() != desiredClip);
-    if (clipChanged) {
-        m_anim.SetClip(desiredClip, true);
+    const bool isMoving = std::abs(vel.x) > 0.05f;
+
+    // Choose animation WITHOUT color-based psycho detection
+    std::string desired;
+
+    // If you still want to use audio state to drive "angry" look, you can use m_audioState.
+    const bool psycho = (m_audioState == PlayerAudioState::Crazy);
+
+    if (!grounded)
+    {
+        desired = psycho ? "AngryJump" : "Jump";
+    }
+    else
+    {
+        if (!isMoving)
+            desired = psycho ? "AngryIdle" : "Idle";
+        else
+            desired = psycho ? (m_isWalking ? "AngryWalk" : "AngryRun")
+            : (m_isWalking ? "Walk" : "Run");
+    }
+
+    if (m_anim.CurrentClip() != desired)
+    {
+        m_anim.SetClip(desired, true);
+
+        if (desired == "Jump" || desired == "AngryJump")
+            m_anim.Reset();
+
         CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
     }
-
-    // Audio mood from color (Magenta/Cyan => Crazy)
-    const sf::Color c = m_sprite.getColor();
-    const bool isCrazyVisual = (c == sf::Color::Magenta || c == sf::Color::Cyan);
-    m_audioState = isCrazyVisual ? PlayerAudioState::Crazy : PlayerAudioState::Neutral;
 
     m_anim.Update(dt);
 }
 
+// ------------------------------------------------------------
 void Player::SyncGraphics()
 {
     if (!m_body) return;
@@ -166,6 +218,7 @@ void Player::SyncGraphics()
     m_sprite.setPosition(pos.x * Units::PPM, pos.y * Units::PPM);
 }
 
+// ------------------------------------------------------------
 void Player::Draw(RenderWindow& window)
 {
     SyncGraphics();

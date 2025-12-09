@@ -7,8 +7,32 @@ World::World(b2World& worldRef)
     : physicsWorld(worldRef)       // Gravity downward
 {
     // Create ALL obstacles here
-    createObstacle(500, 620, false, 100, 100, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle
-    createObstacle(700, 620, false, 200, 200, "Assets/Obstacles/box2.png"); // Static (ground-only) obstacle
+    createObstacle(440, 588, true, 170, 170, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle 
+    createObstacle(700, 470, true, 300, 400, "Assets/Obstacles/foull car.png"); // Static (ground-only) obstacle
+    createObstacle(1800, 646, true, 200, 40, "Assets/Obstacles/Closed_sewers_cap.png");
+
+
+    createObstacle(2890, 630, false, 100, 30, "Assets/Obstacles/sewers_cap1.png");
+    createObstacle(2900, 620, false, 300, 140, "Assets/Obstacles/sewers.png");
+    createObstacle(3800, 600, false, 250, 170, "Assets/Obstacles/grocery.png");
+
+    createObstacle(4800, 0, false, 150, 100, "Assets/Obstacles/1.png");
+    createObstacle(4700, 600, false, 600, 100, "Assets/Obstacles/Untitled-2.png");
+
+    createObstacle(6000, 640, false, 170, 80, "Assets/Obstacles/doggie.png");
+
+
+    createObstacle(7200, -100, true, 170, 80, "Assets/Obstacles/man falling.png");
+    createObstacle(7200, 600, false, 400, 100, "Assets/Obstacles/Untitled-2.png");
+
+
+
+
+
+
+
+
+
 }
 
 void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
@@ -25,7 +49,7 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     // -------- BOX2D BODY --------
     b2BodyDef bodyDef;
     bodyDef.position.Set(x * INV_PPM, y * INV_PPM);
-    bodyDef.type = onlyGround ? b2_staticBody : b2_dynamicBody;
+    bodyDef.type = b2_staticBody;
 
     b2Body* body = physicsWorld.CreateBody(&bodyDef);
 
@@ -78,16 +102,27 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
         {
             mIsColliding = true;
 
-            if (obj.textureIndex == 0)
+
+            if (obj.textureIndex == 1)
                 obj.shape.setFillColor(sf::Color::Yellow);
-            else if (obj.textureIndex == 1)
+            else if (obj.textureIndex == 3)
+                obj.shape.setFillColor(sf::Color::Yellow);
+            else if (obj.textureIndex == 5)
+                obj.shape.setFillColor(sf::Color::Yellow);
+            else if (obj.textureIndex == 7)
                 obj.shape.setFillColor(sf::Color::Blue);
+            else if (obj.textureIndex == 8)
+                obj.shape.setFillColor(sf::Color::Blue);
+            else if (obj.textureIndex == 10)
+                obj.shape.setFillColor(sf::Color::Blue);
+
+
         }
         else
         {
-            obj.shape.setFillColor(obj.onlyGround ? sf::Color::Red : sf::Color::White);
+            // obj.shape.setFillColor(obj.onlyGround ? sf::Color::Red : sf::Color::White);
 
-            // Use obstacle-specific texture
+             // Use obstacle-specific texture
             sf::Texture& tex = obstacleTextures[obj.textureIndex];
             obj.shape.setTexture(&tex);
             sf::Vector2u texSize = tex.getSize();
