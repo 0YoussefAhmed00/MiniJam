@@ -1,13 +1,8 @@
-#ifndef PLAYER_H
-#define PLAYER_H
-
+#pragma once
 #include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
-#include <memory>
-#include "Units.h"
 #include "Animation.h"
 
-// Audio mood associated with the player, used to drive AudioManager
 enum class PlayerAudioState { Neutral, Crazy };
 
 class Player {
@@ -16,7 +11,7 @@ public:
     Player(b2World* world, float startX = 640.f, float startY = 200.f);
     ~Player();
 
-    // update logic (physics already stepped by Game)
+    // update logic (physics already stepped by Game/Level)
     void Update(float dt, bool grounded);
 
     // update visual sprite from physics body
@@ -28,8 +23,8 @@ public:
     // physics accessors
     b2Body* GetBody() const { return m_body; }
     b2Fixture* GetFootFixture() const { return m_footFixture; }
-    b2Vec2 GetPosition() const { return m_body ? m_body->GetPosition() : b2Vec2(0, 0); }
-    b2Vec2 GetLinearVelocity() const { return m_body ? m_body->GetLinearVelocity() : b2Vec2(0, 0); }
+    b2Vec2 GetPosition() const { return m_body ? m_body->GetPosition() : b2Vec2_zero; }
+    b2Vec2 GetLinearVelocity() const { return m_body ? m_body->GetLinearVelocity() : b2Vec2_zero; }
     void SetLinearVelocity(const b2Vec2& v) { if (m_body) m_body->SetLinearVelocity(v); }
 
     // visual helpers (color tint on sprite)
@@ -39,6 +34,12 @@ public:
     // Audio mood/state for driving music
     void SetAudioState(PlayerAudioState s) { m_audioState = s; }
     PlayerAudioState GetAudioState() const { return m_audioState; }
+
+    // Movement state hint (set by input layer)
+    void SetWalking(bool walking) { m_isWalking = walking; }
+
+private:
+    void applyCollisionFromSprite();
 
 private:
     b2World* m_world;
@@ -51,7 +52,6 @@ private:
 
     // State
     bool m_facingRight;
+    bool m_isWalking = false;
     PlayerAudioState m_audioState = PlayerAudioState::Neutral;
 };
-
-#endif // PLAYER_H

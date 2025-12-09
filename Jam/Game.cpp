@@ -403,7 +403,6 @@ void Game::update(float dt)
         nextInputLockCheck = randomFloat(3.f, 6.f);
     }
 
-    // Player movement logic
     b2Vec2 vel = m_player->GetLinearVelocity();
     float moveSpeed = 5.f;
 
@@ -413,7 +412,9 @@ void Game::update(float dt)
     bool jumpKeyS = Keyboard::isKeyPressed(Keyboard::S);
     bool shiftKey = Keyboard::isKeyPressed(Keyboard::LShift) || Keyboard::isKeyPressed(Keyboard::RShift);
 
+    // Shift = Walk (slower), else Run (faster)
     moveSpeed = (shiftKey ? 5.f : 10.f);
+    m_player->SetWalking(shiftKey);
 
     if (inputLocked) {
         leftKey = rightKey = false;
@@ -441,6 +442,7 @@ void Game::update(float dt)
 
     m_player->SetLinearVelocity(vel);
     m_player->Update(dt, isGroundedNow);
+
 
     // Update player emitter positions
     b2Vec2 playerPos = m_player->GetBody()->GetPosition();
