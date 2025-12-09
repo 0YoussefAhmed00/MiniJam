@@ -80,9 +80,8 @@ void World::checkCollision(const sf::RectangleShape& playerShape, sf::RenderWind
 
         if (playerBounds.intersects(obsBounds))
         {
-            std::cout << "awdjnakjsdbakwsjdbkjasbdkjabd";
             mIsColliding = true;
-            obj.shape.setFillColor(sf::Color::Yellow);  // highlight
+            obj.shape.setFillColor(sf::Color::Yellow); 
         }
         else
         {

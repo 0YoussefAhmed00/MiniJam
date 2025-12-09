@@ -177,6 +177,7 @@ int Game::Run()
             if (m_worldView) m_worldView->update(dt);
 
             update(dt);
+            
         }
         else {
             m_audio.StopMusic();
@@ -250,7 +251,6 @@ void Game::processEvents()
         }
     }
 }
-
 void Game::update(float dt)
 {
 
@@ -408,6 +408,49 @@ void Game::update(float dt)
     m_player->SetLinearVelocity(vel);
     m_player->Update(dt, isGroundedNow);
 
+    // Call World::checkCollision using a rectangle built from the player's main fixture AABB
+    if (m_worldView && m_player) {
+        sf::RectangleShape playerShape;
+        b2Body* body = m_player->GetBody();
+        if (body) {
+            const b2Transform& xf = body->GetTransform();
+            float minx = 1e9f, miny = 1e9f, maxx = -1e9f, maxy = -1e9f;
+
+            for (b2Fixture* f = body->GetFixtureList(); f; f = f->GetNext()) {
+                if (f->IsSensor()) continue;
+                const b2Shape* s = f->GetShape();
+                if (s->GetType() != b2Shape::e_polygon) continue;
+
+                const b2PolygonShape* poly = static_cast<const b2PolygonShape*>(s);
+                for (int i = 0; i < poly->m_count; ++i) {
+                    b2Vec2 v = b2Mul(xf, poly->m_vertices[i]);
+                    if (v.x < minx) minx = v.x;
+                    if (v.x > maxx) maxx = v.x;
+                    if (v.y < miny) miny = v.y;
+                    if (v.y > maxy) maxy = v.y;
+                }
+                // Use the first non-sensor polygon fixture as the player's main body
+                break;
+            }
+
+            if (maxx > minx && maxy > miny) {
+                float w = (maxx - minx) * PPM;
+                float h = (maxy - miny) * PPM;
+                playerShape.setSize(sf::Vector2f(w, h));
+                playerShape.setOrigin(w * 0.5f, h * 0.5f);
+                playerShape.setPosition(((minx + maxx) * 0.5f) * PPM, ((miny + maxy) * 0.5f) * PPM);
+            }
+            else {
+                // Fallback: 40x40 centered on the body
+                b2Vec2 p = body->GetPosition();
+                playerShape.setSize(sf::Vector2f(40.f, 40.f));
+                playerShape.setOrigin(20.f, 20.f);
+                playerShape.setPosition(p.x * PPM, p.y * PPM);
+            }
+        }
+        m_worldView->checkCollision(playerShape, m_window);
+    }
+
     PlayerAudioState cur = m_player->GetAudioState();
     if (cur != m_lastAppliedAudioState) {
         if (cur == PlayerAudioState::Crazy) m_audio.CrossfadeToCrazy();
@@ -418,7 +461,6 @@ void Game::update(float dt)
     b2Vec2 playerPos = m_player->GetBody()->GetPosition();
     m_audio.Update(dt, playerPos);
 }
-
 void Game::render()
 {
     if (m_state == GameState::MENU) {
