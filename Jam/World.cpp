@@ -7,12 +7,21 @@ World::World(b2World& worldRef)
     : physicsWorld(worldRef)       // Gravity downward
 {
     // Create ALL obstacles here
-    createObstacle(700, 650, true);      // Static (ground-only) obstacle
-    createObstacle(500, 650, false);     // Dynamic obstacle
+    createObstacle(500, 620, false, 100, 100, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle
+    createObstacle(700, 620, false, 200, 200, "Assets/Obstacles/box2.png"); // Static (ground-only) obstacle
 }
 
-void World::createObstacle(float x, float y, bool onlyGround)
+void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
+
 {
+    // Load texture and store it
+    obstacleTextures.emplace_back();
+    if (!obstacleTextures.back().loadFromFile(textureFile))
+        std::cerr << "Failed to load texture: " << textureFile << std::endl;
+    obstacleTextures.back().setRepeated(false);
+
+    sf::Vector2u texSize = obstacleTextures.back().getSize();
+
     // -------- BOX2D BODY --------
     b2BodyDef bodyDef;
     bodyDef.position.Set(x * INV_PPM, y * INV_PPM);
@@ -21,57 +30,44 @@ void World::createObstacle(float x, float y, bool onlyGround)
     b2Body* body = physicsWorld.CreateBody(&bodyDef);
 
     b2PolygonShape box;
-    box.SetAsBox(20 * INV_PPM, 20 * INV_PPM);
+    box.SetAsBox(scaleX / 2 * INV_PPM, scaleY / 2 * INV_PPM); // Box2D half-size
 
     b2FixtureDef fixture;
     fixture.shape = &box;
     fixture.density = onlyGround ? 0.f : 2.f;
-
-    // Collision filtering
     fixture.filter.categoryBits = CATEGORY_OBSTACLE;
-
-    if (onlyGround)
-        fixture.filter.maskBits = CATEGORY_GROUND | CATEGORY_PLAYER;
-    else
-        fixture.filter.maskBits = CATEGORY_GROUND;  // dynamic obstacle collides only with player
+    fixture.filter.maskBits = onlyGround ? (CATEGORY_GROUND | CATEGORY_PLAYER) : CATEGORY_GROUND;
 
     body->CreateFixture(&fixture);
 
     // -------- SFML SHAPE --------
-    sf::RectangleShape shape(sf::Vector2f(40, 40));
-    shape.setOrigin(20, 20);
+    sf::RectangleShape shape(sf::Vector2f(scaleX, scaleY));
+    shape.setOrigin(scaleX / 2, scaleY / 2);
     shape.setPosition(x, y);
+    shape.setTexture(&obstacleTextures.back());
+    shape.setTextureRect(sf::IntRect(0, 0, texSize.x, texSize.y));
 
-    shape.setFillColor(onlyGround ? sf::Color::Red : sf::Color::White);
-
-    // Store obstacle
-    obstacles.emplace_back(body, shape, onlyGround);
+    // Store obstacle with texture index
+    obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() - 1);
 }
 
 void World::update(float dt)
 {
-    // Step physics
     physicsWorld.Step(dt, 8, 3);
 
-    // Sync SFML with Box2D
     for (auto& obj : obstacles)
     {
-        b2Body* body = obj.body;
-        sf::RectangleShape& shape = obj.shape;
+        b2Vec2 pos = obj.body->GetPosition();
+        float angle = obj.body->GetAngle();
 
-        b2Vec2 pos = body->GetPosition();
-        float angle = body->GetAngle();
-
-        shape.setPosition(pos.x * PPM, pos.y * PPM);
-        shape.setRotation(angle * 180.f / 3.14159f);
+        obj.shape.setPosition(pos.x * PPM, pos.y * PPM);
+        obj.shape.setRotation(angle * 180.f / 3.14159f);
     }
 }
 
-
-void World::checkCollision(const sf::RectangleShape& playerShape, sf::RenderWindow& window)
+void World::checkCollision(const sf::RectangleShape& playerShape)
 {
     sf::FloatRect playerBounds = playerShape.getGlobalBounds();
-
     mIsColliding = false;
 
     for (auto& obj : obstacles)
@@ -81,11 +77,21 @@ void World::checkCollision(const sf::RectangleShape& playerShape, sf::RenderWind
         if (playerBounds.intersects(obsBounds))
         {
             mIsColliding = true;
-            obj.shape.setFillColor(sf::Color::Yellow); 
+
+            if (obj.textureIndex == 0)
+                obj.shape.setFillColor(sf::Color::Yellow);
+            else if (obj.textureIndex == 1)
+                obj.shape.setFillColor(sf::Color::Blue);
         }
         else
         {
             obj.shape.setFillColor(obj.onlyGround ? sf::Color::Red : sf::Color::White);
+
+            // Use obstacle-specific texture
+            sf::Texture& tex = obstacleTextures[obj.textureIndex];
+            obj.shape.setTexture(&tex);
+            sf::Vector2u texSize = tex.getSize();
+            obj.shape.setTextureRect(sf::IntRect(0, 0, texSize.x, texSize.y));
         }
     }
 }
