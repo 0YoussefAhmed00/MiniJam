@@ -1,8 +1,7 @@
 #include "Player.h"
 #include "World.h"
 #include "Game.h"
-
-
+#include "Units.h"
 #include <sstream>
 
 using namespace sf;
@@ -19,12 +18,8 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     const float halfWidthPx = gb.width * 0.5f;
     const float halfHeightPx = gb.height * 0.5f;
 
-    // Tune these to control collision box size
-    constexpr float COLLISION_WIDTH_SCALE = 0.45f; // narrower than sprite
-    constexpr float COLLISION_HEIGHT_SCALE = 0.9f;  // nearly full height
-    // Or switch to fixed pixel sizes if preferred:
-    // constexpr float BODY_HALF_WIDTH_PX  = 12.f;
-    // constexpr float BODY_HALF_HEIGHT_PX = 22.f;
+    constexpr float COLLISION_WIDTH_SCALE = 0.45f;
+    constexpr float COLLISION_HEIGHT_SCALE = 0.9f;
 
     const float bodyHalfWidthPx = halfWidthPx * COLLISION_WIDTH_SCALE;
     const float bodyHalfHeightPx = halfHeightPx * COLLISION_HEIGHT_SCALE;
@@ -36,10 +31,9 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     boxFixture.shape = &dynamicBox;
     boxFixture.density = 1.f;
     boxFixture.friction = 0.3f;
-    boxFixture.filter.categoryBits = 0x0001; // player category (optional: use World::CATEGORY_PLAYER)
+    boxFixture.filter.categoryBits = 0x0001;
     body->CreateFixture(&boxFixture);
 
-    // Foot sensor unchanged
     const float footHalfWidthPx = std::max(4.f, (gb.width - 6.f) * 0.5f);
     const float footHalfHeightPx = std::max(2.f, gb.height * 0.04f);
     const float footOffsetYPx = halfHeightPx;
@@ -63,6 +57,7 @@ Player::Player(b2World* world, float startX, float startY)
     m_body(nullptr),
     m_footFixture(nullptr),
     m_facingRight(true),
+    m_isWalking(false),
     m_audioState(PlayerAudioState::Neutral)
 {
     if (!m_world) return;
@@ -76,18 +71,30 @@ Player::Player(b2World* world, float startX, float startY)
     m_anim.BindSprite(&m_sprite);
     m_sprite.setScale(0.25f, 0.25f);
 
+    // Run frames
     std::vector<std::string> runPaths;
     runPaths.reserve(8);
-    const std::string base = "Assets/Player/Run/";
+    const std::string baseRun = "Assets/Player/Run/";
     for (int i = 1; i <= 8; ++i) {
-        runPaths.emplace_back(base + "Run" + std::to_string(i) + ".png");
+        runPaths.emplace_back(baseRun + "Run" + std::to_string(i) + ".png");
     }
     bool okRun = m_anim.AddClip("Run", runPaths, 0.08f, true);
 
-    std::vector<std::string> idlePaths = { base + "Idle.png" };
+    // Walk frames (Shift)
+    std::vector<std::string> walkPaths;
+    walkPaths.reserve(7);
+    const std::string baseWalk = "Assets/Player/Walk/";
+    for (int i = 1; i <= 7; ++i) {
+        walkPaths.emplace_back(baseWalk + "Walk" + std::to_string(i) + ".png");
+    }
+    bool okWalk = m_anim.AddClip("Walk", walkPaths, 0.10f, true);
+
+    // Idle frame (single)
+    const std::string baseIdle = "Assets/Player/Run/";
+    std::vector<std::string> idlePaths = { baseIdle + "Idle.png" };
     bool okIdle = m_anim.AddClip("Idle", idlePaths, 0.2f, true);
 
-    if (!okRun && !okIdle) {
+    if (!okRun && !okIdle && !okWalk) {
         sf::Image img;
         img.create(50, 50, Color::Red);
         sf::Texture t;
@@ -97,7 +104,8 @@ Player::Player(b2World* world, float startX, float startY)
         m_sprite.setOrigin(25.f, 25.f);
     }
     else {
-        m_anim.SetClip(okIdle ? "Idle" : "Run", true);
+        // Prefer Idle if available
+        m_anim.SetClip(okIdle ? "Idle" : (okWalk ? "Walk" : "Run"), true);
     }
 
     m_sprite.setColor(Color::Red);
@@ -127,15 +135,23 @@ void Player::Update(float dt, bool /*grounded*/)
 
     const float moveEpsilon = 0.05f;
     const bool isMoving = std::abs(vel.x) > moveEpsilon;
-    const std::string desiredClip = isMoving ? "Run" : "Idle";
+
+    // Choose clip: Idle, Walk (Shift), Run
+    std::string desiredClip;
+    if (!isMoving) {
+        desiredClip = "Idle";
+    }
+    else {
+        desiredClip = m_isWalking ? "Walk" : "Run";
+    }
+
     const bool clipChanged = (m_anim.CurrentClip() != desiredClip);
     if (clipChanged) {
         m_anim.SetClip(desiredClip, true);
         CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
     }
 
-    // Optional: derive audio mood from current color (kept the original psycho visual mapping)
-    // If sprite is Magenta, consider Crazy; else Neutral.
+    // Audio mood from color (Magenta/Cyan => Crazy)
     const sf::Color c = m_sprite.getColor();
     const bool isCrazyVisual = (c == sf::Color::Magenta || c == sf::Color::Cyan);
     m_audioState = isCrazyVisual ? PlayerAudioState::Crazy : PlayerAudioState::Neutral;
