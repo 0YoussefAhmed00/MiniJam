@@ -35,8 +35,12 @@ void Game::MyContactListener::EndContact(b2Contact* contact) {
 }
 
 Game::Game()
-    : m_window(VideoMode(1280, 720), "SFML + Box2D + AudioManager + Persona Demo"),
-    m_camera(FloatRect(0, 0, 1280, 720)),
+    : m_window(VideoMode::getDesktopMode(),
+        "SFML + Box2D + AudioManager + Persona Demo",
+        Style::Fullscreen),
+    m_camera(FloatRect(0, 0,
+        VideoMode::getDesktopMode().width,
+        VideoMode::getDesktopMode().height)),
     m_defaultView(m_window.getDefaultView()),
     m_gravity(0.f, 9.8f),
     m_world(m_gravity),
