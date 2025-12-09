@@ -27,8 +27,8 @@ public:
     b2Vec2 GetLinearVelocity() const { return m_body ? m_body->GetLinearVelocity() : b2Vec2_zero; }
     void SetLinearVelocity(const b2Vec2& v) { if (m_body) m_body->SetLinearVelocity(v); }
 
-    // visual helpers (color tint on sprite)
-    void SetColor(const sf::Color& c) { m_sprite.setColor(c); }
+    // visual helpers (color tint on sprite) - disabled to use sprite only
+    void SetColor(const sf::Color& /*c*/) { /* No-op: tinting disabled */ }
     void SetOrigin(float ox, float oy) { m_sprite.setOrigin(ox, oy); }
 
     // Audio mood/state for driving music
