@@ -350,6 +350,8 @@ void Game::update(float dt)
         }
 
         // Split mode handling remains unchanged...
+        // --- Split mode handling (replace the existing split-mode / inTransition code) ---
+
         float elapsedSplit = splitClock.getElapsedTime().asSeconds();
         if (!splitMode && !inTransition) {
             if (elapsedSplit >= nextSplitCheck) {
@@ -357,6 +359,10 @@ void Game::update(float dt)
                     inTransition = true;
                     pendingEnable = true;
                     transitionClock.restart();
+
+                    // Start/target rotation for smooth lerp
+                    m_transitionStartRotation = m_camera.getRotation();
+                    m_transitionTargetRotation = 180.f; // rotating 0 -> 180
                 }
                 else {
                     splitClock.restart();
@@ -369,20 +375,36 @@ void Game::update(float dt)
                 inTransition = true;
                 pendingEnable = false;
                 transitionClock.restart();
+
+                // Start/target rotation for smooth lerp
+                m_transitionStartRotation = m_camera.getRotation();
+                m_transitionTargetRotation = 0.f; // rotating 180 -> 0
             }
         }
+
         if (inTransition) {
             float t = transitionClock.getElapsedTime().asSeconds();
-            if (t >= TRANSITION_TIME) {
+            float alpha = t / TRANSITION_TIME;
+            if (alpha > 1.f) alpha = 1.f;
+
+            // Smoothstep easing for a nicer feel: ease = 3a^2 - 2a^3
+            float ease = alpha * alpha * (3.f - 2.f * alpha);
+
+            // Interpolate rotation and apply every frame while transitioning
+            float curRot = m_transitionStartRotation + (m_transitionTargetRotation - m_transitionStartRotation) * ease;
+            m_camera.setRotation(curRot);
+
+            if (alpha >= 1.f) {
+                // transition finished — set final state exactly and reset flags
                 if (pendingEnable) {
                     splitMode = true;
                     splitDuration = randomFloat(2.f, 4.f);
-                    m_camera.setRotation(180.f);
+                    m_camera.setRotation(180.f); // ensure exact final value
                     splitClock.restart();
                 }
                 else {
                     splitMode = false;
-                    m_camera.setRotation(0.f);
+                    m_camera.setRotation(0.f); // ensure exact final value
                     splitClock.restart();
                     nextSplitCheck = randomFloat(1.f, 3.f);
                 }
@@ -390,6 +412,7 @@ void Game::update(float dt)
                 pendingEnable = false;
             }
         }
+
     }
     else {
         splitMode = false;
