@@ -162,7 +162,7 @@ Game::Game()
     nextInputLockCheck = randomFloat(3.f, 6.f);
     inputLockClock.restart();
 
-    if (!m_font.loadFromFile("assets/Font/Cairo-VariableFont_slnt,wght.ttf")) {
+    if (!m_font.loadFromFile("assets/Font/Myriad Arabic Regular.ttf")) {
         std::cerr << "Warning: font not loaded (assets/arial.ttf)\n";
     }
     m_debugText.setFont(m_font);
@@ -519,7 +519,7 @@ void Game::render()
 
     b2Vec2 pos = m_player->GetBody()->GetPosition();
     Vector2f playerPosPixels(pos.x * PPM, pos.y * PPM);
-    Vector2f camCenter = playerPosPixels;
+    Vector2f camCenter = {playerPosPixels.x, playerPosPixels.y -150};
     if (inTransition) {
         camCenter.x += randomOffset(TRANSITION_SHAKE_MAG);
         camCenter.y += randomOffset(TRANSITION_SHAKE_MAG);
