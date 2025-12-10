@@ -520,7 +520,7 @@ void Game::update(float dt)
         }
         else if (!inputLocked) {
             if (elapsedLock >= nextInputLockCheck) {
-                if (rand() % 2 == 0) {
+                if (rand() % 3 == 0) {
                     if (isGrounded) {
                         inputLocked = true;
                         inputLockClock.restart();
