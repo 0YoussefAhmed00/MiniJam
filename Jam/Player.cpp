@@ -33,7 +33,7 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     b2FixtureDef boxFixture;
     boxFixture.shape = &dynamicBox;
     boxFixture.density = 1.f;
-    boxFixture.friction = 0.3f;
+    boxFixture.friction = 0.f;
     boxFixture.filter.categoryBits = 0x0001;
     body->CreateFixture(&boxFixture);
 
