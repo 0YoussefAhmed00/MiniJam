@@ -1,10 +1,12 @@
-#include "Player.h"
+﻿#include "Player.h"
 #include "World.h"
 #include "Game.h"
 #include "Units.h"
 #include <sstream>
+#include <iostream>
 
 using namespace sf;
+using namespace std;
 
 // ------------------------------------------------------------
 //  FIXTURE REBUILD (unchanged)
@@ -75,7 +77,7 @@ Player::Player(b2World* world, float startX, float startY)
     m_body = m_world->CreateBody(&boxDef);
 
     m_anim.BindSprite(&m_sprite);
-    m_sprite.setScale(0.25f, 0.25f);
+    m_sprite.setScale(0.33f, 0.33f);
 
     // -----------------------------------------------------
     //        NORMAL ANIMATIONS (sprite only, no tint)
@@ -113,6 +115,7 @@ Player::Player(b2World* world, float startX, float startY)
             paths.push_back(base + std::to_string(i) + ".png");
         m_anim.AddClip("Jump", paths, 0.10f, false);
     }
+    
 
     // Angry variants are kept available (no color trigger), use programmatic state if needed
     {
@@ -141,10 +144,18 @@ Player::Player(b2World* world, float startX, float startY)
         m_anim.AddClip("AngryIdle", paths, 0.2f, true);
     }
 
+    // Wave (played once during input lock)
+    {
+        std::vector<std::string> paths;
+        const std::string base = "Assets/Player/Wave/";
+        for (int i = 1; i <= 5; i++)
+            paths.push_back(base + std::to_string(i) + ".png");
+        m_anim.AddClip("Wave", paths, 0.12f, false);   // <-- NOT looping
+    }
     m_anim.SetClip("Idle", true);
     m_anim.SetFacingRight(true);
 
-    // Ensure no tint is applied; use sprite�s original texture colors
+    // Ensure no tint is applied; use sprite’s original texture colors
     m_sprite.setColor(sf::Color::White);
 
     CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
@@ -184,6 +195,32 @@ void Player::Update(float dt, bool grounded)
     // If you still want to use audio state to drive "angry" look, you can use m_audioState.
     const bool psycho = (m_audioState == PlayerAudioState::Crazy);
 
+    if (m_playingWave)
+    {
+        int currentFrame = m_anim.CurrentFrameIndex();
+
+        // Detect when animation freezes at last frame
+        if (currentFrame == m_lastWaveFrame)
+            m_waveTimer += dt;
+        else
+            m_waveTimer = 0.f; // reset because still animating
+
+        m_lastWaveFrame = currentFrame;
+
+        // If non-looping clip stops changing frames → finished
+        if (m_waveTimer > 0.15f)
+        {
+            m_playingWave = false;
+            // DO NOT return, fall through to normal state logic
+        }
+        else
+        {
+            // Still playing wave animation
+            m_anim.Update(dt);
+            return;
+        }
+    }
+
     if (!grounded)
     {
         desired = psycho ? "AngryJump" : "Jump";
@@ -207,8 +244,12 @@ void Player::Update(float dt, bool grounded)
         CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
     }
 
+    
+
     m_anim.Update(dt);
 }
+
+
 
 // ------------------------------------------------------------
 void Player::SyncGraphics()
@@ -217,6 +258,22 @@ void Player::SyncGraphics()
     b2Vec2 pos = m_body->GetPosition();
     m_sprite.setPosition(pos.x * Units::PPM, pos.y * Units::PPM);
 }
+
+void Player::PlayWave()
+{
+    if (!m_playingWave)
+    {
+        m_playingWave = true;
+        m_waveTimer = 0.f;
+        m_lastWaveFrame = -1;
+
+        m_anim.SetClip("Wave", true);
+        m_anim.Reset();
+    }
+}
+
+
+
 
 // ------------------------------------------------------------
 void Player::Draw(RenderWindow& window)
