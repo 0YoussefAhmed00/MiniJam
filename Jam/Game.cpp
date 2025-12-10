@@ -35,12 +35,12 @@ void Game::MyContactListener::EndContact(b2Contact* contact) {
 }
 
 Game::Game()
-    : m_window(VideoMode(1280,1000),
+    : m_window(VideoMode::getDesktopMode(),
         "SFML + Box2D + AudioManager + Persona Demo",
-        Style::None),
+        Style::Fullscreen),
     m_camera(FloatRect(0, 0,
-        VideoMode::getDesktopMode().width,
-        VideoMode::getDesktopMode().height)),
+        1920,
+        1080)),
     m_defaultView(m_window.getDefaultView()),
     m_gravity(0.f, 9.8f),
     m_world(m_gravity),
@@ -72,7 +72,7 @@ Game::Game()
     // Ground (Box2D)
     b2BodyDef groundDef;
     groundDef.type = b2_staticBody;
-    groundDef.position.Set(640 * INV_PPM, 680 * INV_PPM);
+    groundDef.position.Set(640 * INV_PPM, 880 * INV_PPM);
     b2Body* ground = m_world.CreateBody(&groundDef);
 
     b2PolygonShape groundBox;
@@ -85,7 +85,7 @@ Game::Game()
     ground->CreateFixture(&groundFix);
 
     // Player
-    m_player = std::make_unique<Player>(&m_world, 640.f, 200.f);
+    m_player = std::make_unique<Player>(&m_world, 140.f, 800.f);
     m_contactListener.footFixture = m_player->GetFootFixture();
 
     // Audio setup
@@ -504,6 +504,8 @@ void Game::update(float dt)
     }
 
     static bool refusePlayed = false; // for "refuse" sound once
+    bool wavePlayed = false;
+
 
     if (psychoMode) {
         float elapsedLock = inputLockClock.getElapsedTime().asSeconds();
@@ -549,6 +551,15 @@ void Game::update(float dt)
                 auto it = m_playerEmitters.find("refuse");
                 if (it != m_playerEmitters.end() && it->second) {
                     it->second->sound.play();
+                }
+                if (inputLocked && !wavePlayed)
+                {
+                    m_player->PlayWave();
+                    wavePlayed = true;
+                }
+                else if (!inputLocked)
+                {
+                    wavePlayed = false;
                 }
                 refusePlayed = true;
             }
@@ -750,7 +761,7 @@ void Game::render()
 
     b2Vec2 pos = m_player->GetBody()->GetPosition();
     Vector2f playerPosPixels(pos.x * PPM, pos.y * PPM);
-    Vector2f camCenter = {playerPosPixels.x, playerPosPixels.y -150};
+    Vector2f camCenter = {playerPosPixels.x, 540};
     if (inTransition) {
         camCenter.x += randomOffset(TRANSITION_SHAKE_MAG);
         camCenter.y += randomOffset(TRANSITION_SHAKE_MAG);
@@ -765,11 +776,18 @@ void Game::render()
     m_window.clear(Color::Black);
 
     if (m_worldView) {
-        m_worldView->draw(m_window);
+        // Draw background layers and obstacles
+        m_worldView->drawParallaxBackground(m_window);
+        m_worldView->draw(m_window); // draw obstacles
     }
 
-    m_window.draw(m_groundShape);
+    // Draw player
     m_player->Draw(m_window);
+
+    // Draw foreground layers
+    if (m_worldView) {
+        m_worldView->drawParallaxForeground(m_window);
+    }
 
     m_window.draw(m_diagMark);
     m_window.draw(m_fxMark);

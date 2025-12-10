@@ -7,6 +7,10 @@ enum class PlayerAudioState { Neutral, Crazy };
 
 class Player {
 public:
+    bool m_playingWave = false;
+    float m_waveTimer = 0.f;
+    int m_lastWaveFrame = -1;
+
     // Construct player and create physics body + fixtures in the provided world
     Player(b2World* world, float startX = 640.f, float startY = 200.f);
     ~Player();
@@ -20,6 +24,7 @@ public:
     // draw the player sprite
     void Draw(sf::RenderWindow& window);
 
+    void PlayWave();
     // physics accessors
     b2Body* GetBody() const { return m_body; }
     b2Fixture* GetFootFixture() const { return m_footFixture; }

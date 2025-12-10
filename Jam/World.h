@@ -49,6 +49,9 @@ public:
     void update(float dt, const sf::Vector2f& camPos);
     void draw(sf::RenderWindow& window);
     void checkCollision(const sf::RectangleShape& playerShape);
+    void drawParallaxBackground(sf::RenderWindow& window);
+    void drawParallaxForeground(sf::RenderWindow& window);
+    void drawLayer(sf::RenderWindow& window, ParallaxLayer& layer);
 
     void createObstacle(
         float x, float y,
@@ -58,9 +61,6 @@ public:
     );
 
     // Split parallax draw so caller can insert player rendering between ground and foreground
-    void drawParallaxBack(sf::RenderWindow& window); // layers1..8
-    void drawGround(sf::RenderWindow& window); // layer9
-    void drawParallaxFront(sf::RenderWindow& window); // layers10..12
 
 private:
     b2World& physicsWorld;
@@ -71,8 +71,7 @@ private:
     std::vector<ParallaxLayer> parallaxLayers;
     void initParallax();
     void updateParallax(const sf::Vector2f& camPos);
-    void drawParallax(sf::RenderWindow& window);
-
+    
     // Y-offset fix (applied only once)
     bool parallaxAligned = false;
     float parallaxYOffset = 0.f;
