@@ -1,4 +1,4 @@
-#include "World.h"
+﻿#include "World.h"
 #include<iostream>
 constexpr float PPM = 30.f;      // Pixels per meter
 constexpr float INV_PPM = 1.f / PPM;
@@ -6,6 +6,8 @@ constexpr float INV_PPM = 1.f / PPM;
 World::World(b2World& worldRef)
     : physicsWorld(worldRef)       // Gravity downward
 {
+    initParallax();
+
     // Create ALL obstacles here
     createObstacle(440, 588, true, 170, 170, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle 
     createObstacle(700, 470, true, 300, 400, "Assets/Obstacles/foull car.png"); // Static (ground-only) obstacle
@@ -61,7 +63,7 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     fixture.density = onlyGround ? 0.f : 2.f;
     fixture.filter.categoryBits = CATEGORY_OBSTACLE;
     fixture.filter.maskBits = onlyGround ? (CATEGORY_GROUND | CATEGORY_PLAYER) : CATEGORY_GROUND;
-
+    fixture.friction = 0.0f;
     body->CreateFixture(&fixture);
 
     // -------- SFML SHAPE --------
@@ -74,11 +76,16 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     // Store obstacle with texture index
     obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() - 1);
 }
-
-void World::update(float dt)
+// ======================================================================
+// WORLD UPDATE
+// ======================================================================
+void World::update(float dt, const sf::Vector2f& camPos)
 {
     physicsWorld.Step(dt, 8, 3);
 
+    updateParallax(camPos);
+
+    // Sync obstacles
     for (auto& obj : obstacles)
     {
         b2Vec2 pos = obj.body->GetPosition();
@@ -133,6 +140,99 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
 
 void World::draw(sf::RenderWindow& window)
 {
+    drawParallax(window);
+
     for (auto& obj : obstacles)
         window.draw(obj.shape);
+}
+// ======================================================================
+// PARALLAX INITIALIZATION (12 layers, back → front)
+// ======================================================================
+void World::initParallax()
+{
+    parallaxLayers.clear();
+    parallaxLayers.resize(12);
+
+    // Correct order: slowest → fastest (BACK → FRONT)
+    const float speedsX[12] = {
+        0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f,
+        0.08f, 0.12f, 0.18f, 0.26f, 0.40f, 0.55f
+    };
+
+    const float speedsY[12] = {
+        0.005f, 0.01f, 0.015f, 0.02f, 0.025f, 0.03f,
+        0.05f, 0.07f, 0.11f, 0.16f, 0.24f, 0.35f
+    };
+
+    for (int i = 0; i < 12; i++)
+    {
+        std::string path = "Assets/Parallax/" + std::to_string(i + 1) + ".png";
+
+        if (!parallaxLayers[i].texture.loadFromFile(path))
+            std::cerr << "FAILED TO LOAD PARALLAX: " << path << "\n";
+
+        parallaxLayers[i].texture.setRepeated(true);
+        parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
+
+        // Prevent stretching and enforce exact 1920x1080 image size
+        parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0, 0, 1920, 1080));
+        parallaxLayers[i].sprite.setScale(1.f, 1.f);
+
+        parallaxLayers[i].speedX = speedsX[i];
+        parallaxLayers[i].speedY = speedsY[i];
+    }
+}
+
+// ======================================================================
+// UPDATE PARALLAX (CAMERA-DRIVEN)
+// ======================================================================
+void World::updateParallax(const sf::Vector2f& camPos)
+{
+    for (auto& layer : parallaxLayers)
+    {
+        float px = -camPos.x * layer.speedX;
+        float py = -camPos.y * layer.speedY + parallaxYOffset;
+
+        layer.sprite.setPosition(px, py);
+    }
+
+    // ------------------------------------------------------------------
+    // FIRST FRAME — FIX VERTICAL OFFSET
+    // ------------------------------------------------------------------
+    if (!parallaxAligned)
+    {
+        parallaxAligned = true;
+
+        float currentY = parallaxLayers[0].sprite.getPosition().y;
+        parallaxYOffset = -currentY;
+
+        for (auto& l : parallaxLayers)
+        {
+            sf::Vector2f p = l.sprite.getPosition();
+            l.sprite.setPosition(p.x, p.y + parallaxYOffset);
+        }
+    }
+}
+
+// ======================================================================
+// DRAW PARALLAX (HORIZONTAL WRAP ONLY)
+// ======================================================================
+void World::drawParallax(sf::RenderWindow& window)
+{
+    const float texW = 1920.f;
+
+    for (auto& layer : parallaxLayers)
+    {
+        float baseX = std::fmod(layer.sprite.getPosition().x, texW);
+        if (baseX > 0) baseX -= texW;
+
+        float y = layer.sprite.getPosition().y;
+
+        for (int i = 0; i < 3; i++)
+        {
+            sf::Sprite copy = layer.sprite;
+            copy.setPosition(baseX + texW * i, y);
+            window.draw(copy);
+        }
+    }
 }

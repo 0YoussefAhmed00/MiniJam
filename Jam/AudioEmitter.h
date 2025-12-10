@@ -41,7 +41,14 @@ struct AudioEmitter {
 
 
 	void play() {
-		if (buffer) sound.play();
+		if (!buffer) return;
+		// Ensure the sound restarts when requested (stop current play first)
+		if (sound.getStatus() == sf::Sound::Playing) {
+			sound.stop();
+			// reset to beginning
+			sound.setPlayingOffset(sf::Time::Zero);
+		}
+		sound.play();
 	}
 	void stop() { sound.stop(); }
 

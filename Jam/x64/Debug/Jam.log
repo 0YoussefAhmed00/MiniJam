@@ -10,7 +10,4 @@ D:\ItiProblemsolving\Jam\Jam\Game.cpp(42,36): warning C4244:         with
 D:\ItiProblemsolving\Jam\Jam\Game.cpp(42,36): warning C4244:         [
 D:\ItiProblemsolving\Jam\Jam\Game.cpp(42,36): warning C4244:             T=float
 D:\ItiProblemsolving\Jam\Jam\Game.cpp(42,36): warning C4244:         ]
-  Player.cpp
-  World.cpp
-  Generating Code...
   Jam.vcxproj -> D:\ItiProblemsolving\Jam\x64\Debug\Template.exe
