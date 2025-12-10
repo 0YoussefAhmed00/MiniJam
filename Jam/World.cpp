@@ -1,4 +1,5 @@
 ﻿#include "World.h"
+#include "AudioEmitter.h"
 #include<iostream>
 
 #include <SFML/Graphics.hpp>
@@ -37,6 +38,8 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     obstacleTextures.emplace_back();
     if (!obstacleTextures.back().loadFromFile(textureFile))
         std::cerr << "Failed to load texture: " << textureFile << std::endl;
+
+    obstacleTextureFiles.push_back(textureFile);
     obstacleTextures.back().setRepeated(false);
 
     sf::Vector2u texSize = obstacleTextures.back().getSize();
@@ -95,40 +98,46 @@ void World::update(float dt, const sf::Vector2f& camPos)
     }
 }
 
+
+
 void World::checkCollision(const sf::RectangleShape& playerShape)
 {
     sf::FloatRect playerBounds = playerShape.getGlobalBounds();
     mIsColliding = false;
 
-    for (auto& obj : obstacles)
+    // reset last collided index each frame
+    lastCollidedObstacleIndex = -1;
+
+    for (size_t i = 0; i < obstacles.size(); ++i)
     {
+        auto& obj = obstacles[i];
         sf::FloatRect obsBounds = obj.shape.getGlobalBounds();
 
         if (playerBounds.intersects(obsBounds))
         {
             mIsColliding = true;
 
+            // record first collided obstacle index
+            if (lastCollidedObstacleIndex == -1)
+                lastCollidedObstacleIndex = static_cast<int>(i);
 
+            // existing color logic...
             if (obj.textureIndex == 1)
                 obj.shape.setFillColor(sf::Color::Yellow);
             else if (obj.textureIndex == 3)
                 obj.shape.setFillColor(sf::Color::Yellow);
             else if (obj.textureIndex == 5)
-                obj.shape.setFillColor(sf::Color::Yellow);
+                obj.shape.setFillColor(sf::Color::Magenta);
             else if (obj.textureIndex == 7)
                 obj.shape.setFillColor(sf::Color::Blue);
             else if (obj.textureIndex == 8)
                 obj.shape.setFillColor(sf::Color::Blue);
             else if (obj.textureIndex == 10)
                 obj.shape.setFillColor(sf::Color::Blue);
-
-
         }
         else
         {
-            // obj.shape.setFillColor(obj.onlyGround ? sf::Color::Red : sf::Color::White);
-
-             // Use obstacle-specific texture
+            // restore texture for non-colliding obstacles
             sf::Texture& tex = obstacleTextures[obj.textureIndex];
             obj.shape.setTexture(&tex);
             sf::Vector2u texSize = tex.getSize();
@@ -136,6 +145,30 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
         }
     }
 }
+
+int World::findObstacleByTextureSubstring(const std::string& substr) const
+{
+    for (size_t i = 0; i < obstacleTextureFiles.size(); ++i) {
+        if (obstacleTextureFiles[i].find(substr) != std::string::npos) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
+}
+
+b2Vec2 World::getObstacleBodyPosition(int index) const
+{
+    if (index < 0 || index >= static_cast<int>(obstacles.size())) return b2Vec2(0.f, 0.f);
+    b2Body* b = obstacles[index].body;
+    if (!b) return b2Vec2(0.f, 0.f);
+    return b->GetPosition();
+}
+
+int World::getLastCollidedObstacleIndex() const
+{
+    return lastCollidedObstacleIndex;
+}
+
 
 void World::draw(sf::RenderWindow& window)
 {

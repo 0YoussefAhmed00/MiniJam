@@ -34,6 +34,9 @@ void Game::MyContactListener::EndContact(b2Contact* contact) {
     if (footContacts < 0) footContacts = 0;
 }
 
+
+
+
 Game::Game()
     : m_window(VideoMode::getDesktopMode(),
         "SFML + Box2D + AudioManager + Persona Demo",
@@ -110,6 +113,56 @@ Game::Game()
     m_effectEmitter->maxDistance = 20.f;
     m_effectEmitter->baseVolume = 1.f;
 
+
+    // player reply emitter (just like refuse)
+    m_playerReply = std::make_shared<AudioEmitter>();
+    m_playerReply->id = "playerReply";
+    m_playerReply->category = AudioCategory::Dialogue;
+    m_playerReply->minDistance = 0.5f;
+    m_playerReply->maxDistance = 20.f;
+    m_playerReply->baseVolume = 1.f;
+    m_playerReply->position = b2Vec2(0.f, 0.f);  // optional: track player position if you want
+    if (!m_playerReply->loadBuffer("assets/Audio/player_reply.wav")) {
+        std::cerr << "Warning: player reply audio not loaded\n";
+    }
+    m_playerReply->sound.setLoop(false);
+    m_audio.RegisterEmitter(m_playerReply);
+
+    // find the grocery obstacle by filename substring (change "grocery" to match your filename)
+    m_groceryObstacleIndex = m_worldView->findObstacleByTextureSubstring("grocery");
+
+    if (m_groceryObstacleIndex >= 0)
+    {
+        auto makeGroceryEmitter = [&](const std::string& id, const std::string& filePath)->std::shared_ptr<AudioEmitter> {
+            auto e = std::make_shared<AudioEmitter>();
+            e->id = id;
+            e->category = AudioCategory::Dialogue; // grocery is dialogue-like
+            e->minDistance = 0.5f;
+            e->maxDistance = 50.f;
+            e->baseVolume = 1.f;
+            // initial position (will be updated each frame in update())
+            b2Vec2 p = m_worldView->getObstacleBodyPosition(m_groceryObstacleIndex);
+            e->position = p;
+            if (!e->loadBuffer(filePath)) {
+                std::cerr << "Warning: grocery audio not loaded: " << filePath << "\n";
+            }
+            e->sound.setLoop(false);
+            m_audio.RegisterEmitter(e);
+            return e;
+            };
+
+        // filenames — create these WAV/OGG files in your assets folder
+        m_groceryA = makeGroceryEmitter("groceryA", "assets/Audio/grocery_line1.wav");
+        m_groceryB = makeGroceryEmitter("groceryB", "assets/Audio/grocery_line2.wav");
+        m_groceryCollision = makeGroceryEmitter("groceryCollision", "assets/Audio/grocery_collision.wav");
+
+        m_groceryClock.restart();
+        m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+    }
+
+
+
+
     m_audio.SetCrossfadeTime(1.2f);
     bool ok = m_audio.loadMusic("Assets/Audio/music_neutral.ogg", "Assets/Audio/music_crazy.ogg");
     if (!ok) std::cerr << "Warning: music not loaded. Replace file paths with your assets.\n";
@@ -148,6 +201,15 @@ Game::Game()
         };
 
     createPlayerEmitter("refuse", "assets/Audio/refuse.wav");
+    createPlayerEmitter("player_reply", "assets/Audio/player_reply.wav");
+    auto dbgIt = m_playerEmitters.find("player_reply");
+    if (dbgIt == m_playerEmitters.end() || !dbgIt->second || !dbgIt->second->buffer) {
+        std::cerr << "DEBUG: player_reply emitter missing or buffer not loaded. Check path & case sensitivity.\n";
+    }
+    else {
+        std::cerr << "DEBUG: player_reply emitter loaded successfully.\n";
+    }
+
     //createPlayerEmitter("jump", "assets/Audio/jump.wav");
     //createPlayerEmitter("attack", "assets/Audio/attack.wav");
     //// Add more player sounds as needed
@@ -475,6 +537,11 @@ void Game::processEvents()
         if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num2) {
             if (m_effectEmitter->buffer) m_effectEmitter->sound.play();
         }
+        if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Y) {
+            if (m_playerReply && m_playerReply->buffer) {
+                m_playerReply->sound.play();
+            }
+        }
     }
 }
 
@@ -731,6 +798,98 @@ void Game::update(float dt)
             }
         }
         m_worldView->checkCollision(playerShape);
+        // ----- Grocery: update emitter positions -----
+        // ----- Grocery: update emitter positions -----
+        if (m_groceryObstacleIndex >= 0)
+        {
+            b2Vec2 gpos = m_worldView->getObstacleBodyPosition(m_groceryObstacleIndex);
+            if (m_groceryA) m_groceryA->position = gpos;
+            if (m_groceryB) m_groceryB->position = gpos;
+            if (m_groceryCollision) m_groceryCollision->position = gpos;
+        }
+
+        // ---- Grocery: collision vs ambient behavior ----
+        bool collidingWithGrocery = (m_worldView->getLastCollidedObstacleIndex() == m_groceryObstacleIndex);
+
+        if (collidingWithGrocery)
+        {
+            // Stop ambient lines so collision line is clean
+            if (m_groceryA && m_groceryA->sound.getStatus() == sf::Sound::Playing) m_groceryA->sound.stop();
+            if (m_groceryB && m_groceryB->sound.getStatus() == sf::Sound::Playing) m_groceryB->sound.stop();
+
+            // If we haven't yet started the collision sequence for this contact, start it
+            if (!m_groceryCollisionPlayed)
+            {
+                if (m_groceryCollision && m_groceryCollision->buffer) {
+                    m_groceryCollision->sound.stop(); // ensure restart
+                    m_groceryCollision->sound.play();
+                    m_groceryWaitingPlayerReply = true;  // wait until grocery line finishes
+                    // debug:
+                    std::cerr << "DEBUG: grocery collision line started\n";
+                }
+                m_groceryCollisionPlayed = true;
+            }
+
+            // If grocery finished and we are waiting, play the player's reply
+            if (m_groceryWaitingPlayerReply)
+            {
+                // Guard: if grocery emitter exists, wait until it reports Stopped
+                bool groceryStopped = true; // default true if no emitter (fallback)
+                if (m_groceryCollision && m_groceryCollision->buffer) {
+                    groceryStopped = (m_groceryCollision->sound.getStatus() == sf::Sound::Stopped);
+                }
+
+                if (groceryStopped)
+                {
+                    // Play player reply exactly like "refuse" (from map)
+                    auto itReply = m_playerEmitters.find("player_reply");
+                    if (itReply != m_playerEmitters.end() && itReply->second && itReply->second->buffer) {
+                        // restart to ensure we always hear it
+                        itReply->second->sound.stop();
+                        itReply->second->sound.play();
+                        std::cerr << "DEBUG: played player_reply after grocery finished\n";
+                    }
+                    else {
+                        std::cerr << "DEBUG: player_reply emitter not found / buffer missing\n";
+                    }
+
+                    // Done waiting for this collision
+                    m_groceryWaitingPlayerReply = false;
+                }
+            }
+        }
+        else
+        {
+            // no collision — reset collision sequence and enable ambient random chatter
+            m_groceryCollisionPlayed = false;
+            m_groceryWaitingPlayerReply = false;
+
+            if (m_groceryClock.getElapsedTime().asSeconds() >= m_nextGroceryLineTime)
+            {
+                m_groceryClock.restart();
+                m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+
+                // skip playing if grocery collision emitter is mid-play (unlikely since not colliding)
+                if (m_groceryA && m_groceryA->buffer && m_groceryA->sound.getStatus() != sf::Sound::Playing &&
+                    m_groceryB && m_groceryB->buffer && m_groceryB->sound.getStatus() != sf::Sound::Playing)
+                {
+                    if (rand() % 2 == 0)
+                    {
+                        if (m_groceryA && m_groceryA->buffer) m_groceryA->sound.play();
+                    }
+                    else
+                    {
+                        if (m_groceryB && m_groceryB->buffer) m_groceryB->sound.play();
+                    }
+                }
+                else
+                {
+                    // If one ambient is playing, just skip this tick and let timer pick the next.
+                }
+            }
+        }
+
+
     }
 
     // Audio crossfade logic
