@@ -176,16 +176,16 @@ void World::initParallax()
         //speedx/y      y axis pos, scale
         {0.0f, 0.00f, 0.0f, 1.00f},  // layer 1 (very far)
         {0.0f, 0.0f, +0.0f, 1.00f},  // layer 2
-        {0.0f, 0.0f, +0.0f, 1.00f},  // layer 3
+        {-0.09f, 0.0f, +0.0f, 1.00f},  // layer 3
 
-        {0.0f, 0.0f, +0.0f, 1.00f},  // layer 4
-        {0.0f, 0.0f, +0.0f, 1.00f},  // layer 5
-        {0.0f, 0.0f,   0.0f, 1.00f},  // layer 6
+        {-0.09f, 0.0f, +0.0f, 1.00f},  // layer 4
+        {-0.09f, 0.0f, +0.0f, 1.00f},  // layer 5
+        {-0.08f, 0.0f,   0.0f, 1.00f},  // layer 6
 
-        {0.0f, 0.0f, -0.0f, 1.00f},  // layer 7
-        {0.0f, 0.0f, -0.0f, 1.00f},  // layer 8
+        {-0.07f, 0.0f, -0.0f, 1.00f},  // layer 7
+        {-0.06f, 0.0f, -0.0f, 1.00f},  // layer 8
 
-        {0.0f, 0.0f,   0.f, 1.00f},  // layer 9 (GROUND layer)
+        {-0.05f, 0.0f,   0.f, 1.00f},  // layer 9 (GROUND layer)
 
         {0.0f, 0.0f, -0.0f, 1.00f},  // layer 10 (foreground)
         {0.0f, 0.0f, -0.0f, 1.00f},  // layer 11
@@ -233,13 +233,13 @@ void World::updateParallax(const sf::Vector2f& camPos)
 
         float px, py;
 
-        if (i == 1 || i==11) // CLOUD LAYER (index 1, second element)
+        if (i == 1 || i == 11) // CLOUD LAYER (index 1, second element)
         {
             // independent drift
-            if(i==1)
+            if (i == 1)
                 layer.baseXOffset += cloudSpeed * dtc;
             else
-                layer.baseXOffset += (cloudSpeed+15) * dtc;
+                layer.baseXOffset += (cloudSpeed + 15) * dtc;
 
             // wrap offset to avoid floating point overflow
             float texW = layer.texture.getSize().x * layer.scale;
@@ -273,6 +273,7 @@ void World::updateParallax(const sf::Vector2f& camPos)
         }
     }
 }
+
 
 
 
