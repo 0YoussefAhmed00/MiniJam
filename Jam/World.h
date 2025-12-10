@@ -21,7 +21,10 @@ public:
     struct ParallaxLayer {
         sf::Texture texture;
         sf::Sprite sprite;
-
+        
+        float baseYOffset = 0.f;
+        float baseXOffset = 0.f;
+        float scale = 1.f;
         float speedX = 0.f; // horizontal factor
         float speedY = 0.f; // vertical factor
     };
@@ -54,6 +57,11 @@ public:
         const std::string& texFile
     );
 
+    // Split parallax draw so caller can insert player rendering between ground and foreground
+    void drawParallaxBack(sf::RenderWindow& window); // layers1..8
+    void drawGround(sf::RenderWindow& window); // layer9
+    void drawParallaxFront(sf::RenderWindow& window); // layers10..12
+
 private:
     b2World& physicsWorld;
 
@@ -77,4 +85,12 @@ private:
 
     // Collision debug info
     bool mIsColliding = false;
+
+    // level extents (pixels)
+    float levelMinX = 1e9f;
+    float levelMaxX = -1e9f;
+
+    // Draw ground from parallax layer #9 (index8)
+    // (kept public wrapper, internal implementation unchanged)
+    // void drawGround(sf::RenderWindow& window);
 };
