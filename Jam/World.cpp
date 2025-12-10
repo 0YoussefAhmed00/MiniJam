@@ -26,15 +26,6 @@ World::World(b2World& worldRef)
 
     createObstacle(7200, -100, true, 170, 80, "Assets/Obstacles/man falling.png");
     createObstacle(7200, 600, false, 400, 100, "Assets/Obstacles/Untitled-2.png");
-
-
-
-
-
-
-
-
-
 }
 
 void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
@@ -74,7 +65,13 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     shape.setTextureRect(sf::IntRect(0, 0, texSize.x, texSize.y));
 
     // Store obstacle with texture index
-    obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() - 1);
+    obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() -1);
+
+    // Update level extents (in pixels)
+    float left = x - scaleX *0.5f;
+    float right = x + scaleX *0.5f;
+    if (left < levelMinX) levelMinX = left;
+    if (right > levelMaxX) levelMaxX = right;
 }
 // ======================================================================
 // WORLD UPDATE
@@ -142,6 +139,9 @@ void World::draw(sf::RenderWindow& window)
 {
     drawParallax(window);
 
+    // Draw ground layer (parallax index8) stretched across level
+    drawGround(window);
+
     for (auto& obj : obstacles)
         window.draw(obj.shape);
 }
@@ -153,15 +153,36 @@ void World::initParallax()
     parallaxLayers.clear();
     parallaxLayers.resize(12);
 
-    // Correct order: slowest → fastest (BACK → FRONT)
-    const float speedsX[12] = {
-        0.01f, 0.02f, 0.03f, 0.04f, 0.05f, 0.06f,
-        0.08f, 0.12f, 0.18f, 0.26f, 0.40f, 0.55f
+    // -----------------------------
+    // CENTRALIZED PARALLAX CONFIG
+    // -----------------------------
+    struct LayerConfig {
+        float speedX;
+        float speedY;
+        float baseYOffset;
+        float scale;
     };
 
-    const float speedsY[12] = {
-        0.005f, 0.01f, 0.015f, 0.02f, 0.025f, 0.03f,
-        0.05f, 0.07f, 0.11f, 0.16f, 0.24f, 0.35f
+    // BACK → FRONT
+    const LayerConfig config[13] =
+    {
+        {0.01f, 0.005f, +120.f, 1.00f},  // layer 1 (very far)
+        {0.02f, 0.010f, +100.f, 1.00f},  // layer 2
+        {0.03f, 0.015f, +80.f, 1.00f},  // layer 3
+
+        {0.04f, 0.020f, +90.f, 1.00f},  // layer 4
+        {0.05f, 0.025f, +90.f, 1.00f},  // layer 5
+        {0.06f, 0.030f,   90.f, 1.00f},  // layer 6
+
+        {0.08f, 0.050f, -10.f, 1.00f},  // layer 7
+        {0.12f, 0.070f, -20.f, 1.00f},  // layer 8
+
+        {0.18f, 0.110f,   0.f, 1.00f},  // layer 9 (GROUND layer)
+
+        {0.18f, 0.160f, -20.f, 1.10f},  // layer 10 (foreground)
+        {0.40f, 0.240f, -40.f, 1.15f},  // layer 11
+        {0.55f, 0.350f, -60.f, 1.20f},  // layer 12 (closest)
+        {0.55f, 0.350f, -60.f, 1.20f},  // layer 13 (closest)
     };
 
     for (int i = 0; i < 12; i++)
@@ -172,16 +193,20 @@ void World::initParallax()
             std::cerr << "FAILED TO LOAD PARALLAX: " << path << "\n";
 
         parallaxLayers[i].texture.setRepeated(true);
+
         parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
-
-        // Prevent stretching and enforce exact 1920x1080 image size
         parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0, 0, 1920, 1080));
-        parallaxLayers[i].sprite.setScale(1.f, 1.f);
 
-        parallaxLayers[i].speedX = speedsX[i];
-        parallaxLayers[i].speedY = speedsY[i];
+        // Apply user-friendly controls
+        parallaxLayers[i].speedX = config[i].speedX;
+        parallaxLayers[i].speedY = config[i].speedY;
+        parallaxLayers[i].baseYOffset = config[i].baseYOffset;
+        parallaxLayers[i].scale = config[i].scale;
+
+        parallaxLayers[i].sprite.setScale(config[i].scale, config[i].scale);
     }
 }
+
 
 // ======================================================================
 // UPDATE PARALLAX (CAMERA-DRIVEN)
@@ -190,15 +215,13 @@ void World::updateParallax(const sf::Vector2f& camPos)
 {
     for (auto& layer : parallaxLayers)
     {
-        float px = -camPos.x * layer.speedX;
-        float py = -camPos.y * layer.speedY + parallaxYOffset;
+        float px = -camPos.x * layer.speedX + layer.baseXOffset;
+        float py = -camPos.y * layer.speedY + parallaxYOffset + layer.baseYOffset;
 
         layer.sprite.setPosition(px, py);
     }
 
-    // ------------------------------------------------------------------
-    // FIRST FRAME — FIX VERTICAL OFFSET
-    // ------------------------------------------------------------------
+    // FIRST FRAME: fix alignment
     if (!parallaxAligned)
     {
         parallaxAligned = true;
@@ -214,25 +237,64 @@ void World::updateParallax(const sf::Vector2f& camPos)
     }
 }
 
+
 // ======================================================================
 // DRAW PARALLAX (HORIZONTAL WRAP ONLY)
 // ======================================================================
 void World::drawParallax(sf::RenderWindow& window)
 {
-    const float texW = 1920.f;
+ const float texW =1920.f;
 
-    for (auto& layer : parallaxLayers)
-    {
-        float baseX = std::fmod(layer.sprite.getPosition().x, texW);
-        if (baseX > 0) baseX -= texW;
+ // Get view info so we tile just enough to cover the visible area (in pixels)
+ sf::View view = window.getView();
+ float viewW = view.getSize().x;
+ float viewLeft = view.getCenter().x - viewW *0.5f;
 
-        float y = layer.sprite.getPosition().y;
+ for (auto& layer : parallaxLayers)
+ {
+ float baseX = std::fmod(layer.sprite.getPosition().x, texW);
+ if (baseX >0) baseX -= texW;
 
-        for (int i = 0; i < 3; i++)
-        {
-            sf::Sprite copy = layer.sprite;
-            copy.setPosition(baseX + texW * i, y);
-            window.draw(copy);
-        }
-    }
+ float y = layer.sprite.getPosition().y;
+
+ // figure which tile index covers viewLeft
+ int firstTile = static_cast<int>(std::floor((viewLeft - baseX) / texW)) -1;
+ int needed = static_cast<int>(std::ceil(viewW / texW)) +3; // extra padding
+
+ for (int i =0; i < needed; ++i)
+ {
+ sf::Sprite copy = layer.sprite;
+ copy.setPosition(baseX + texW * (firstTile + i), y);
+ window.draw(copy);
+ }
+ }
+}
+
+// Draw ground from parallax layer #9 (index8)
+void World::drawGround(sf::RenderWindow& window)
+{
+ const int groundIndex =8; //0-based index for layer9
+ if (groundIndex <0 || groundIndex >= static_cast<int>(parallaxLayers.size())) return;
+
+ ParallaxLayer& layer = parallaxLayers[groundIndex];
+ const float texW =1920.f;
+
+ // Use view to tile ground infinitely across the visible area (and a bit beyond)
+ sf::View view = window.getView();
+ float viewW = view.getSize().x;
+ float viewLeft = view.getCenter().x - viewW *0.5f;
+ float viewRight = viewLeft + viewW;
+
+ float baseX = std::fmod(layer.sprite.getPosition().x, texW);
+ if (baseX >0) baseX -= texW;
+ float y = layer.sprite.getPosition().y;
+
+ int firstTile = static_cast<int>(std::floor((viewLeft - baseX) / texW)) -1;
+ int lastTile = static_cast<int>(std::ceil((viewRight - baseX) / texW)) +1;
+
+ for (int i = firstTile; i <= lastTile; ++i) {
+ sf::Sprite copy = layer.sprite;
+ copy.setPosition(baseX + texW * i, y);
+ window.draw(copy);
+ }
 }

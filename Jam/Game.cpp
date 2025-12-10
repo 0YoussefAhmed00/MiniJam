@@ -35,9 +35,9 @@ void Game::MyContactListener::EndContact(b2Contact* contact) {
 }
 
 Game::Game()
-    : m_window(VideoMode::getDesktopMode(),
+    : m_window(VideoMode(1280,1000),
         "SFML + Box2D + AudioManager + Persona Demo",
-        Style::Fullscreen),
+        Style::None),
     m_camera(FloatRect(0, 0,
         VideoMode::getDesktopMode().width,
         VideoMode::getDesktopMode().height)),
@@ -83,12 +83,6 @@ Game::Game()
     groundFix.filter.categoryBits = m_worldView->CATEGORY_GROUND;
     groundFix.filter.maskBits = m_worldView->CATEGORY_PLAYER | m_worldView->CATEGORY_SENSOR | m_worldView->CATEGORY_OBSTACLE;
     ground->CreateFixture(&groundFix);
-
-    // Ground visual
-    m_groundShape = RectangleShape(Vector2f(4000.f*10, 40.f));
-    m_groundShape.setOrigin(2000.f*10, 20.f);
-    m_groundShape.setPosition(640.f, 680.f);
-    m_groundShape.setFillColor(Color(80, 160, 80));
 
     // Player
     m_player = std::make_unique<Player>(&m_world, 640.f, 200.f);
@@ -371,7 +365,6 @@ Game::Game()
         m_mainMenu->ResetMobileVisual();
     }
 };
-
 
         
     m_frameClock.restart();
