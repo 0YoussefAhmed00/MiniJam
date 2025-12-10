@@ -70,6 +70,24 @@ private:
     AudioManager m_audio;
     std::shared_ptr<AudioEmitter> m_dialogueEmitter;
     std::shared_ptr<AudioEmitter> m_effectEmitter;
+
+    //Grocery Man Variables
+    // Grocery audio
+    int m_groceryObstacleIndex = -1;
+    std::shared_ptr<AudioEmitter> m_groceryA;          // ambient line A
+    std::shared_ptr<AudioEmitter> m_groceryB;          // ambient line B
+    std::shared_ptr<AudioEmitter> m_groceryCollision;  // collision/callout line
+    std::shared_ptr<AudioEmitter> m_playerReply; // add as a private member of Game
+    bool m_groceryCollisionPlayed = false;      // already used, but ensure it's declared as a member
+    bool m_groceryWaitingPlayerReply = false;
+
+    sf::Clock m_groceryClock;
+    float m_nextGroceryLineTime = 0.f;
+    bool m_lastGroceryColliding = false;
+
+
+
+    std::shared_ptr<AudioEmitter> PlayerReply;
     sf::CircleShape m_diagMark;
     sf::CircleShape m_fxMark;
 

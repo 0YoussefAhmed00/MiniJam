@@ -62,6 +62,15 @@ public:
 
     // Split parallax draw so caller can insert player rendering between ground and foreground
 
+    int findObstacleByTextureSubstring(const std::string& substr) const;
+
+    // Get Box2D position of obstacle body (returns b2Vec2(0,0) if invalid index)
+    b2Vec2 getObstacleBodyPosition(int index) const;
+
+    // After checkCollision runs this returns the first obstacle index that the player intersects, or -1
+    int getLastCollidedObstacleIndex() const;
+
+
 private:
     b2World& physicsWorld;
 
@@ -84,6 +93,11 @@ private:
 
     // Collision debug info
     bool mIsColliding = false;
+
+    std::vector<std::string> obstacleTextureFiles;
+
+    // last obstacle index that was found intersecting the player during last checkCollision
+    int lastCollidedObstacleIndex = -1;
 
     // level extents (pixels)
     float levelMinX = 1e9f;
