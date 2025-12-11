@@ -21,7 +21,7 @@ public:
     struct ParallaxLayer {
         sf::Texture texture;
         sf::Sprite sprite;
-        
+
         float baseYOffset = 0.f;
         float baseXOffset = 0.f;
         float scale = 1.f;
@@ -63,13 +63,9 @@ public:
     // Split parallax draw so caller can insert player rendering between ground and foreground
 
     int findObstacleByTextureSubstring(const std::string& substr) const;
-
-    // Get Box2D position of obstacle body (returns b2Vec2(0,0) if invalid index)
     b2Vec2 getObstacleBodyPosition(int index) const;
-
-    // After checkCollision runs this returns the first obstacle index that the player intersects, or -1
     int getLastCollidedObstacleIndex() const;
-
+    Obstacle* getObstacleByTexture(size_t textureIndex);
 
 private:
     b2World& physicsWorld;
@@ -80,8 +76,7 @@ private:
     std::vector<ParallaxLayer> parallaxLayers;
     void initParallax();
     void updateParallax(const sf::Vector2f& camPos);
-    
-    // Y-offset fix (applied only once)
+
     bool parallaxAligned = false;
     float parallaxYOffset = 0.f;
 
@@ -90,13 +85,10 @@ private:
     // ---------------------------------------------------------------------
     std::vector<Obstacle> obstacles;
     std::vector<sf::Texture> obstacleTextures;
+    std::vector<std::string> obstacleTextureFiles;
 
     // Collision debug info
     bool mIsColliding = false;
-
-    std::vector<std::string> obstacleTextureFiles;
-
-    // last obstacle index that was found intersecting the player during last checkCollision
     int lastCollidedObstacleIndex = -1;
 
     // level extents (pixels)

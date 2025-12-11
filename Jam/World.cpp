@@ -1,6 +1,6 @@
 ﻿#include "World.h"
-#include "AudioEmitter.h"
-#include<iostream>
+#include "AudioEmitter.h" // kept from first version (safe if present)
+#include <iostream>
 
 #include <SFML/Graphics.hpp>
 constexpr float PPM = 30.f;      // Pixels per meter
@@ -11,36 +11,36 @@ World::World(b2World& worldRef)
 {
     initParallax();
 
-    // Create ALL obstacles here
-    createObstacle(410, 588+210, true, 170, 170, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle 
+    // Create ALL obstacles here (from the second / latest version)
+    createObstacle(410, 588 + 210, true, 170, 170, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle 
     createObstacle(700, 470 + 210, true, 450, 400, "Assets/Obstacles/foull car.png"); // Static (ground-only) obstacle
     createObstacle(1800, 646 + 210, true, 200, 40, "Assets/Obstacles/Closed_sewers_cap.png");
 
-
     createObstacle(2890, 630 + 210, false, 100, 30, "Assets/Obstacles/sewers_cap1.png");
     createObstacle(2900, 620 + 210, false, 300, 140, "Assets/Obstacles/sewers.png");
-    createObstacle(3800, 600 + 170, false, 250*1.1, 170 * 1.2, "Assets/Obstacles/grocery.png");
+    createObstacle(3800, 600 + 170, false, 250 * 1.1f, 170 * 1.2f, "Assets/Obstacles/grocery.png");
+
+    createObstacle(4825, 0 + 210, false, 120, 80, "Assets/Obstacles/the shit.png");
 
     createObstacle(4800, 0 + 210, false, 150, 100, "Assets/Obstacles/1.png");
     createObstacle(4700, 600 + 210, false, 600, 100, "Assets/Obstacles/Untitled-2.png");
 
     createObstacle(6000, 640 + 170, false, 220, 220, "Assets/Obstacles/doggie.png");
 
-
-    createObstacle(7200, -100 + 210, true, 170, 80, "Assets/Obstacles/man falling.png");
+    createObstacle(7200, -100 + 210, false, 250, 150, "Assets/Obstacles/man falling.png");
     createObstacle(7200, 600 + 210, false, 400, 100, "Assets/Obstacles/Untitled-2.png");
 }
 
 void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
-
 {
     // Load texture and store it
     obstacleTextures.emplace_back();
     if (!obstacleTextures.back().loadFromFile(textureFile))
         std::cerr << "Failed to load texture: " << textureFile << std::endl;
-
-    obstacleTextureFiles.push_back(textureFile);
     obstacleTextures.back().setRepeated(false);
+
+    // keep track of filename for substring searches
+    obstacleTextureFiles.push_back(textureFile);
 
     sf::Vector2u texSize = obstacleTextures.back().getSize();
 
@@ -52,7 +52,7 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     b2Body* body = physicsWorld.CreateBody(&bodyDef);
 
     b2PolygonShape box;
-    box.SetAsBox(scaleX / 2 * INV_PPM, scaleY / 2 * INV_PPM); // Box2D half-size
+    box.SetAsBox(scaleX / 2.f * INV_PPM, scaleY / 2.f * INV_PPM); // Box2D half-size
 
     b2FixtureDef fixture;
     fixture.shape = &box;
@@ -60,24 +60,37 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     fixture.filter.categoryBits = CATEGORY_OBSTACLE;
     fixture.filter.maskBits = onlyGround ? (CATEGORY_GROUND | CATEGORY_PLAYER) : CATEGORY_GROUND;
     fixture.friction = 0.0f;
+
+    
     body->CreateFixture(&fixture);
 
     // -------- SFML SHAPE --------
     sf::RectangleShape shape(sf::Vector2f(scaleX, scaleY));
-    shape.setOrigin(scaleX / 2, scaleY / 2);
+    shape.setOrigin(scaleX / 2.f, scaleY / 2.f);
     shape.setPosition(x, y);
     shape.setTexture(&obstacleTextures.back());
-    shape.setTextureRect(sf::IntRect(0, 0, texSize.x, texSize.y));
+    shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
 
     // Store obstacle with texture index
-    obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() -1);
+    obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() - 1);
 
     // Update level extents (in pixels)
-    float left = x - scaleX *0.5f;
-    float right = x + scaleX *0.5f;
+    float left = x - scaleX * 0.5f;
+    float right = x + scaleX * 0.5f;
     if (left < levelMinX) levelMinX = left;
     if (right > levelMaxX) levelMaxX = right;
 }
+
+World::Obstacle* World::getObstacleByTexture(size_t textureIndex)
+{
+    for (auto& o : obstacles)
+    {
+        if (o.textureIndex == textureIndex)
+            return &o;
+    }
+    return nullptr;
+}
+
 // ======================================================================
 // WORLD UPDATE
 // ======================================================================
@@ -97,8 +110,6 @@ void World::update(float dt, const sf::Vector2f& camPos)
         obj.shape.setRotation(angle * 180.f / 3.14159f);
     }
 }
-
-
 
 void World::checkCollision(const sf::RectangleShape& playerShape)
 {
@@ -121,27 +132,83 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
             if (lastCollidedObstacleIndex == -1)
                 lastCollidedObstacleIndex = static_cast<int>(i);
 
-            // existing color logic...
-            if (obj.textureIndex == 1)
+            // Collision behavior mapping (combined & cleaned up)
+            // Yellow: some obstacle markers (1,3)
+            if (obj.textureIndex == 1 || obj.textureIndex == 3)
+            {
                 obj.shape.setFillColor(sf::Color::Yellow);
-            else if (obj.textureIndex == 3)
-                obj.shape.setFillColor(sf::Color::Yellow);
+            }
+            // Magenta: index 5 (kept from previous mapping)
             else if (obj.textureIndex == 5)
+            {
                 obj.shape.setFillColor(sf::Color::Magenta);
+            }
+            // Index 7: becomes dynamic (falling / physics-enabled)
             else if (obj.textureIndex == 7)
+            {
+                obj.body->SetType(b2_dynamicBody);
+                // keep the color change optional
                 obj.shape.setFillColor(sf::Color::Blue);
+            }
+            // Index 8: trigger zone that makes obstacle with textureIndex 6 fall
             else if (obj.textureIndex == 8)
+            {
+                Obstacle* fallingObj = getObstacleByTexture(6);
+
+                if (fallingObj)
+                {
+                    b2Fixture* f = fallingObj->body->GetFixtureList();
+                    if (f)
+                    {
+                        b2Filter filter = f->GetFilterData();
+                        filter.maskBits |= CATEGORY_GROUND;
+                        f->SetFilterData(filter);
+                    }
+                    fallingObj->body->SetType(b2_dynamicBody);
+                }
+            }
+            // Index 6: "shit" collision -> GAMEOVER behavior (color to Blue as marker)
+            else if (obj.textureIndex == 6)
+            {
                 obj.shape.setFillColor(sf::Color::Blue);
+                // Additional game-over logic should be handled by caller/game code
+            }
+            // Index 11: trigger zone that makes obstacle with textureIndex 10 fall
+            else if (obj.textureIndex == 11)
+            {
+                Obstacle* fallingObj = getObstacleByTexture(10);
+
+                if (fallingObj)
+                {
+                    b2Fixture* f = fallingObj->body->GetFixtureList();
+                    if (f)
+                    {
+                        b2Filter filter = f->GetFilterData();
+                        filter.maskBits |= CATEGORY_GROUND;
+                        f->SetFilterData(filter);
+                    }
+                    fallingObj->body->SetType(b2_dynamicBody);
+                }
+            }
+            // Index 10: "shit" collision -> GAMEOVER behavior (color to Blue)
             else if (obj.textureIndex == 10)
+            {
                 obj.shape.setFillColor(sf::Color::Blue);
+            }
+            // Default: leave texture as-is or apply other game-specific reactions
         }
         else
         {
-            // restore texture for non-colliding obstacles
-            sf::Texture& tex = obstacleTextures[obj.textureIndex];
-            obj.shape.setTexture(&tex);
-            sf::Vector2u texSize = tex.getSize();
-            obj.shape.setTextureRect(sf::IntRect(0, 0, texSize.x, texSize.y));
+            // restore texture and reset fill color for non-colliding obstacles
+            if (obj.textureIndex >= 0 && obj.textureIndex < obstacleTextures.size())
+            {
+                sf::Texture& tex = obstacleTextures[obj.textureIndex];
+                obj.shape.setTexture(&tex);
+                sf::Vector2u texSize = tex.getSize();
+                obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
+            }
+            // reset color (optional — white works well)
+            obj.shape.setFillColor(sf::Color::White);
         }
     }
 }
@@ -169,7 +236,6 @@ int World::getLastCollidedObstacleIndex() const
     return lastCollidedObstacleIndex;
 }
 
-
 void World::draw(sf::RenderWindow& window)
 {
     // Draw background layers
@@ -186,12 +252,12 @@ void World::draw(sf::RenderWindow& window)
 }
 
 // ======================================================================
-// PARALLAX INITIALIZATION (12 layers, back → front)
+// PARALLAX INITIALIZATION (14 layers, back → front)
 // ======================================================================
 void World::initParallax()
 {
     parallaxLayers.clear();
-    parallaxLayers.resize(13);
+    parallaxLayers.resize(14);
 
     // -----------------------------
     // CENTRALIZED PARALLAX CONFIG
@@ -203,8 +269,8 @@ void World::initParallax()
         float scale;
     };
 
-    // BACK → FRONT
-    const LayerConfig config[13] =
+    // BACK → FRONT (14 layers)
+    const LayerConfig config[14] =
     {
         //speedx/y      y axis pos, scale
         {0.0f, 0.00f, 0.0f, 1.00f},  // layer 1 (very far)
@@ -224,9 +290,11 @@ void World::initParallax()
         {0.0f, 0.0f, -0.0f, 1.00f},  // layer 11
         {0.0f, 0.0f, -0.0f, 1.00f},  // layer 12 (closest)
         {0.0f, 0.0f, 300.0f, 1.0f},  // layer 13 (closest)
+
+        {0.0f, 0.0f, 300.0f, 1.0f},  // layer 14 (All Props)
     };
 
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < 14; i++)
     {
         std::string path = "Assets/Parallax/" + std::to_string(i + 1) + ".png";
 
@@ -236,8 +304,7 @@ void World::initParallax()
         parallaxLayers[i].texture.setRepeated(true);
 
         parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
-        parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0, 0, 1920,
-            1080));
+        parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0, 0, 1920, 1080));
 
         // Apply user-friendly controls
         parallaxLayers[i].speedX = config[i].speedX;
@@ -249,12 +316,11 @@ void World::initParallax()
     }
 }
 
-
 // ======================================================================
 // UPDATE PARALLAX (CAMERA-DRIVEN)
 // ======================================================================
-sf::Clock mCloudClock; // For independent cloud movement
-float cloudSpeed = -30.f; // pixels per second
+static sf::Clock mCloudClock; // For independent cloud movement (file-scope static)
+static float cloudSpeed = -30.f; // pixels per second
 
 void World::updateParallax(const sf::Vector2f& camPos)
 {
@@ -266,13 +332,14 @@ void World::updateParallax(const sf::Vector2f& camPos)
 
         float px, py;
 
-        if (i == 1 || i == 11) // CLOUD LAYER (index 1, second element)
+        // cloud layers at indices 1 and 12 (per the second version)
+        if (i == 1 || i == 12)
         {
             // independent drift
             if (i == 1)
                 layer.baseXOffset += cloudSpeed * dtc;
             else
-                layer.baseXOffset += (cloudSpeed + 15) * dtc;
+                layer.baseXOffset += (cloudSpeed + 15.f) * dtc;
 
             // wrap offset to avoid floating point overflow
             float texW = layer.texture.getSize().x * layer.scale;
@@ -307,9 +374,6 @@ void World::updateParallax(const sf::Vector2f& camPos)
     }
 }
 
-
-
-
 // ======================================================================
 // DRAW PARALLAX (HORIZONTAL WRAP ONLY)
 // ======================================================================
@@ -317,14 +381,14 @@ void World::updateParallax(const sf::Vector2f& camPos)
 // Draw background layers (0 → 11)
 void World::drawParallaxBackground(sf::RenderWindow& window)
 {
-    for (size_t i = 0; i < 11; ++i) // layers 0–10
+    for (size_t i = 0; i < 12 && i < parallaxLayers.size(); ++i) // layers 0–11
         drawLayer(window, parallaxLayers[i]);
 }
 
-// Draw foreground layers (12 → 13)
+// Draw foreground layers (12 → end)
 void World::drawParallaxForeground(sf::RenderWindow& window)
 {
-    for (size_t i = 11; i < parallaxLayers.size(); ++i) // layers 11–12 (12 & 13)
+    for (size_t i = 12; i < parallaxLayers.size(); ++i)
         drawLayer(window, parallaxLayers[i]);
 }
 
@@ -336,6 +400,8 @@ void World::drawLayer(sf::RenderWindow& window, ParallaxLayer& layer)
     float viewLeft = view.getCenter().x - viewW * 0.5f;
 
     float texW = layer.texture.getSize().x * layer.scale;
+    if (texW <= 0.f) return; // safety
+
     float baseX = std::fmod(layer.sprite.getPosition().x, texW);
     if (baseX > 0) baseX -= texW;
     float y = layer.sprite.getPosition().y;
