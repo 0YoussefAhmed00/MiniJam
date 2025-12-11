@@ -46,7 +46,7 @@ Game::Game()
         1920,
         1080)),
     m_defaultView(m_window.getDefaultView()),
-    m_gravity(0.f, 9.8f),
+    m_gravity(0.f, 20.f),
     m_world(m_gravity),
     m_player(nullptr),
     m_diagMark(8.f),
@@ -589,8 +589,14 @@ void Game::update(float dt)
 
     bool isGroundedNow = (m_contactListener.footContacts > 0);
     bool jumpKey = jumpKeyW || jumpKeyS;
-    if (jumpKey && isGroundedNow) {
-        vel.y = -10.f;
+
+    // NEW: Prevent jumping if vertical velocity is changing (i.e., in the air)
+    // Require both: grounded via collision AND near-zero vertical velocity
+    const float verticalEpsilon = 0.05f; // small threshold to treat as "not changing"
+    bool canJumpNow = isGroundedNow && std::abs(vel.y) < verticalEpsilon;
+
+    if (jumpKey && canJumpNow) {
+        vel.y = -20.f;
     }
 
     m_player->SetLinearVelocity(vel);
