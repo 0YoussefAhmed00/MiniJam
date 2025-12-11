@@ -18,6 +18,7 @@ class Game {
 public:
     Game();
     ~Game();
+    void ResetGameplay(bool resetPlayerPosition = true);
 
     int Run();
 
