@@ -281,86 +281,102 @@ Game::Game()
     sf::Sprite controlsSprite(controlsTex);
 
     // Scale + center image (keeps aspect ratio)
-    float maxWidth = desktop.width * 0.5f;
+    float maxWidth = desktop.width *0.5f;
     float scale = maxWidth / controlsTex.getSize().x;
     controlsSprite.setScale(scale, scale);
     controlsSprite.setPosition(
-        desktop.width * 0.5f - controlsSprite.getGlobalBounds().width * 0.5f,
-        desktop.height * 0.15f
+        desktop.width *0.5f - controlsSprite.getGlobalBounds().width *0.5f,
+        desktop.height *0.1f
     );
 
     // ------------------------------------
     // Movement Controls text (added)
     // ------------------------------------
-    sf::Text moveText("Movement Controls", m_font, 48);
+    sf::Text moveText("Movement Controls", m_font,48);
     moveText.setFillColor(sf::Color::White);
 
     sf::FloatRect imgBounds = controlsSprite.getGlobalBounds();
     moveText.setPosition(
-        imgBounds.left + imgBounds.width * 0.5f - moveText.getGlobalBounds().width * 0.5f,
-        imgBounds.top - moveText.getGlobalBounds().height - 10.f
+        imgBounds.left + imgBounds.width *0.5f - moveText.getGlobalBounds().width *0.5f,
+        imgBounds.top - moveText.getGlobalBounds().height -10.f
     );
 
-    // ------------------------------------
-    // Master Volume Slider Only
-    // ------------------------------------
-    float masterValue = 1.0f;
-    m_audio.SetMasterVolume(masterValue);
-
-    sf::Text volLabel("Master Vol", m_font, 42);
-    volLabel.setFillColor(sf::Color::White);
-    volLabel.setPosition(60.f, desktop.height * 0.55f);
-
-    sf::Text volValueText("", m_font, 32);
-    volValueText.setFillColor(sf::Color(200, 200, 200));
-    volValueText.setPosition(60.f, desktop.height * 0.62f);
-
-    const float sliderX = 60.f;
-    const float sliderY = desktop.height * 0.70f;
-    const float sliderWidth = desktop.width - 120.f;
-    const float sliderHeight = 10.f;
-
-    sf::RectangleShape sliderBar(sf::Vector2f(sliderWidth, sliderHeight));
-    sliderBar.setPosition(sliderX, sliderY);
-    sliderBar.setFillColor(sf::Color(100, 100, 140));
-
-    sf::RectangleShape sliderFill(sf::Vector2f(sliderWidth * masterValue, sliderHeight));
-    sliderFill.setPosition(sliderX, sliderY);
-    sliderFill.setFillColor(sf::Color(120, 180, 255));
-
-    const float knobRadius = 18.f;
-    sf::CircleShape sliderKnob(knobRadius);
-    sliderKnob.setFillColor(sf::Color(240, 240, 240));
-    sliderKnob.setOutlineThickness(2.f);
-    sliderKnob.setOutlineColor(sf::Color(80, 80, 120));
-
-    auto knobCenterX = sliderX + sliderWidth * masterValue;
-    sliderKnob.setPosition(knobCenterX - knobRadius, sliderY + sliderHeight / 2.f - knobRadius);
-
-    bool dragging = false;
-
-    auto updateSliderUI = [&](float value) {
-        masterValue = std::clamp(value, 0.f, 1.f);
-        m_audio.SetMasterVolume(masterValue);
-
-        sliderFill.setSize(sf::Vector2f(sliderWidth * masterValue, sliderHeight));
-        float cx = sliderX + sliderWidth * masterValue;
-        sliderKnob.setPosition(cx - knobRadius, sliderY + sliderHeight / 2.f - knobRadius);
-
-        int percent = static_cast<int>(std::round(masterValue * 100.f));
-        volValueText.setString(std::to_string(percent) + "%");
+    // Volume sliders
+    struct Slider {
+        std::string label;
+        float value;
+        sf::Text labelText;
+        sf::Text valueText;
+        sf::RectangleShape bar;
+        sf::RectangleShape fill;
+        sf::CircleShape knob;
+        float x, y, width, height, knobRadius;
+        bool dragging{ false };
+        std::function<void(float)> apply;
     };
 
-    updateSliderUI(masterValue);
+    std::vector<Slider> sliders;
 
-    // ------------------------------------
-    // Exit animation (same as before)
-    // ------------------------------------
+    auto makeSlider = [&](const std::string& label, float initial, float y, std::function<void(float)> apply){
+        Slider s;
+        s.label = label;
+        s.value = std::clamp(initial,0.f,1.f);
+        s.x =60.f;
+        s.y = y;
+        s.width = desktop.width -120.f;
+        s.height =10.f;
+        s.knobRadius =18.f;
+        s.apply = apply;
+
+        s.labelText = sf::Text(label, m_font,42);
+        s.labelText.setFillColor(sf::Color::White);
+        s.labelText.setPosition(s.x, y -60.f);
+
+        s.valueText = sf::Text("", m_font,32);
+        s.valueText.setFillColor(sf::Color(200,200,200));
+        s.valueText.setPosition(s.x, y -20.f);
+
+        s.bar = sf::RectangleShape(sf::Vector2f(s.width, s.height));
+        s.bar.setPosition(s.x, s.y);
+        s.bar.setFillColor(sf::Color(100,100,140));
+
+        s.fill = sf::RectangleShape(sf::Vector2f(s.width * s.value, s.height));
+        s.fill.setPosition(s.x, s.y);
+        s.fill.setFillColor(sf::Color(120,180,255));
+
+        s.knob = sf::CircleShape(s.knobRadius);
+        s.knob.setFillColor(sf::Color(240,240,240));
+        s.knob.setOutlineThickness(2.f);
+        s.knob.setOutlineColor(sf::Color(80,80,120));
+        float cx = s.x + s.width * s.value;
+        s.knob.setPosition(cx - s.knobRadius, s.y + s.height /2.f - s.knobRadius);
+
+        auto updateUI = [&](Slider& sl, float v){
+            sl.value = std::clamp(v,0.f,1.f);
+            if (sl.apply) sl.apply(sl.value);
+            sl.fill.setSize(sf::Vector2f(sl.width * sl.value, sl.height));
+            float cx2 = sl.x + sl.width * sl.value;
+            sl.knob.setPosition(cx2 - sl.knobRadius, sl.y + sl.height /2.f - sl.knobRadius);
+            int percent = static_cast<int>(std::round(sl.value *100.f));
+            sl.valueText.setString(std::to_string(percent) + "%");
+        };
+        updateUI(s, s.value);
+        sliders.push_back(s);
+        return updateUI; // not used externally
+    };
+
+    // Initialize sliders with current volumes (AudioManager tracks values internally)
+    makeSlider("Master",1.0f, desktop.height *0.55f, [&](float v){ m_audio.SetMasterVolume(v); });
+    makeSlider("Music",0.9f, desktop.height *0.62f, [&](float v){ m_audio.SetMusicVolume(v); });
+    makeSlider("Background",0.6f, desktop.height *0.69f, [&](float v){ m_audio.SetBackgroundVolume(v); });
+    makeSlider("Dialogue",1.0f, desktop.height *0.76f, [&](float v){ m_audio.SetDialogueVolume(v); });
+    makeSlider("Effects",1.0f, desktop.height *0.83f, [&](float v){ m_audio.SetEffectsVolume(v); });
+
     bool exiting = false;
     sf::Clock exitClock;
-    const float exitDuration = 0.35f;
+    const float exitDuration =0.35f;
     sf::RectangleShape fadeOverlay(sf::Vector2f((float)desktop.width, (float)desktop.height));
-    fadeOverlay.setFillColor(sf::Color(0, 0, 0, 0));
+    fadeOverlay.setFillColor(sf::Color(0,0,0,0));
 
     while (opts.isOpen()) {
         sf::Event ev;
@@ -373,26 +389,47 @@ Game::Game()
                 exitClock.restart();
             }
 
+            auto handleMouseToSlider = [&](Slider& s, const sf::Vector2f& mp){
+                sf::FloatRect bounds(s.x, s.y -20.f, s.width, s.height +40.f);
+                if (bounds.contains(mp)) {
+                    s.dragging = true;
+                    float newVal = (mp.x - s.x) / s.width;
+                    float clamped = std::clamp(newVal,0.f,1.f);
+                    // update
+                    s.fill.setSize(sf::Vector2f(s.width * clamped, s.height));
+                    float cx = s.x + s.width * clamped;
+                    s.knob.setPosition(cx - s.knobRadius, s.y + s.height /2.f - s.knobRadius);
+                    int percent = static_cast<int>(std::round(clamped *100.f));
+                    s.valueText.setString(std::to_string(percent) + "%");
+                    if (s.apply) s.apply(clamped);
+                    s.value = clamped;
+                }
+            };
+
             if (ev.type == sf::Event::MouseButtonPressed && ev.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2f mp((float)ev.mouseButton.x, (float)ev.mouseButton.y);
-                sf::FloatRect sliderBounds(sliderX, sliderY - 20.f, sliderWidth, sliderHeight + 40.f);
-
-                if (sliderBounds.contains(mp)) {
-                    dragging = true;
-                    float newVal = (mp.x - sliderX) / sliderWidth;
-                    updateSliderUI(newVal);
-                }
+                for (auto& s : sliders) handleMouseToSlider(s, mp);
             }
 
-            if (ev.type == sf::Event::MouseButtonReleased &&
-                ev.mouseButton.button == sf::Mouse::Left) {
-                dragging = false;
+            if (ev.type == sf::Event::MouseButtonReleased && ev.mouseButton.button == sf::Mouse::Left) {
+                for (auto& s : sliders) s.dragging = false;
             }
 
-            if (ev.type == sf::Event::MouseMoved && dragging) {
+            if (ev.type == sf::Event::MouseMoved) {
                 sf::Vector2f mp((float)ev.mouseMove.x, (float)ev.mouseMove.y);
-                float newVal = (mp.x - sliderX) / sliderWidth;
-                updateSliderUI(newVal);
+                for (auto& s : sliders) {
+                    if (s.dragging) {
+                        float newVal = (mp.x - s.x) / s.width;
+                        float clamped = std::clamp(newVal,0.f,1.f);
+                        s.fill.setSize(sf::Vector2f(s.width * clamped, s.height));
+                        float cx = s.x + s.width * clamped;
+                        s.knob.setPosition(cx - s.knobRadius, s.y + s.height /2.f - s.knobRadius);
+                        int percent = static_cast<int>(std::round(clamped *100.f));
+                        s.valueText.setString(std::to_string(percent) + "%");
+                        if (s.apply) s.apply(clamped);
+                        s.value = clamped;
+                    }
+                }
             }
         }
 
@@ -409,16 +446,18 @@ Game::Game()
             }
         }
 
-        opts.clear(sf::Color(30, 30, 40));
+        opts.clear(sf::Color(30,30,40));
 
-        // Draw order
-        opts.draw(moveText);       // NEW
+        opts.draw(moveText);
         opts.draw(controlsSprite);
-        opts.draw(volLabel);
-        opts.draw(volValueText);
-        opts.draw(sliderBar);
-        opts.draw(sliderFill);
-        opts.draw(sliderKnob);
+        // draw sliders
+        for (auto& s : sliders) {
+            opts.draw(s.labelText);
+            opts.draw(s.valueText);
+            opts.draw(s.bar);
+            opts.draw(s.fill);
+            opts.draw(s.knob);
+        }
         if (exiting) opts.draw(fadeOverlay);
 
         opts.display();
@@ -982,7 +1021,7 @@ void Game::render()
 
     m_window.draw(m_diagMark);
     m_window.draw(m_fxMark);
-
+    
     m_window.setView(m_defaultView);
     std::string s = std::string("State: PLAYING\n") +
         "PsychoMode: " + (psychoMode ? "ON" : "OFF") + "\n" +
