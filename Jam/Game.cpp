@@ -180,14 +180,14 @@ Game::Game()
     m_audio.SetMasterVolume(1.f);
     m_audio.SetMusicVolume(0.9f);
     m_audio.SetBackgroundVolume(0.6f);
-    m_audio.SetDialogueVolume(1.f);
+    m_audio.SetDialogueVolume(1.0f);
     m_audio.SetEffectsVolume(1.f);
 
     // --- Player emitters ---
     auto createPlayerEmitter = [&](const std::string& id, const std::string& filePath) {
         auto emitter = std::make_shared<AudioEmitter>();
         emitter->id = id;
-        emitter->category = AudioCategory::Effects;
+        emitter->category = AudioCategory::Dialogue; // <-- make it dialogue so dialogue volume affects it
         emitter->position = m_player->GetBody()->GetPosition();
         emitter->minDistance = 0.5f;
         emitter->maxDistance = 20.f;
@@ -196,6 +196,7 @@ Game::Game()
         if (!emitter->loadBuffer(filePath))
             std::cerr << "Warning: " << filePath << " not loaded.\n";
 
+        emitter->sound.setLoop(false);
         m_audio.RegisterEmitter(emitter);
         m_playerEmitters[id] = emitter;
         };
@@ -811,26 +812,56 @@ void Game::update(float dt)
         // ---- Grocery: collision vs ambient behavior ----
         bool collidingWithGrocery = (m_worldView->getLastCollidedObstacleIndex() == m_groceryObstacleIndex);
 
-        if (collidingWithGrocery)
+        if (m_groceryObstacleIndex >= 0)
         {
-            // Stop ambient lines so collision line is clean
-            if (m_groceryA && m_groceryA->sound.getStatus() == sf::Sound::Playing) m_groceryA->sound.stop();
-            if (m_groceryB && m_groceryB->sound.getStatus() == sf::Sound::Playing) m_groceryB->sound.stop();
-
-            // If we haven't yet started the collision sequence for this contact, start it
-            if (!m_groceryCollisionPlayed)
+            if (collidingWithGrocery)
             {
-                if (m_groceryCollision && m_groceryCollision->buffer) {
-                    m_groceryCollision->sound.stop(); // ensure restart
-                    m_groceryCollision->sound.play();
-                    m_groceryWaitingPlayerReply = true;  // wait until grocery line finishes
-                    // debug:
-                    std::cerr << "DEBUG: grocery collision line started\n";
+                // Stop ambient lines so collision line is clean
+                if (m_groceryA && m_groceryA->sound.getStatus() == sf::Sound::Playing) m_groceryA->sound.stop();
+                if (m_groceryB && m_groceryB->sound.getStatus() == sf::Sound::Playing) m_groceryB->sound.stop();
+
+                // If we haven't yet started the collision sequence for this contact, start it
+                if (!m_groceryCollisionPlayed)
+                {
+                    if (m_groceryCollision && m_groceryCollision->buffer) {
+                        m_groceryCollision->sound.stop(); // ensure restart
+                        m_groceryCollision->sound.play();
+                        m_groceryWaitingPlayerReply = true;  // wait until grocery line finishes (persist even if player leaves)
+                        std::cerr << "DEBUG: grocery collision line started\n";
+                    }
+                    m_groceryCollisionPlayed = true;
                 }
-                m_groceryCollisionPlayed = true;
+            }
+            else
+            {
+                // NOT colliding: do NOT clear m_groceryWaitingPlayerReply — we still want the player reply
+                // Ambient random chatter should only occur when we're not waiting for a reply
+                if (!m_groceryWaitingPlayerReply)
+                {
+                    if (m_groceryClock.getElapsedTime().asSeconds() >= m_nextGroceryLineTime)
+                    {
+                        m_groceryClock.restart();
+                        m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+
+                        // skip playing if any ambient is already playing
+                        if (m_groceryA && m_groceryA->buffer && m_groceryA->sound.getStatus() != sf::Sound::Playing &&
+                            m_groceryB && m_groceryB->buffer && m_groceryB->sound.getStatus() != sf::Sound::Playing)
+                        {
+                            if (rand() % 2 == 0)
+                            {
+                                if (m_groceryA && m_groceryA->buffer) m_groceryA->sound.play();
+                            }
+                            else
+                            {
+                                if (m_groceryB && m_groceryB->buffer) m_groceryB->sound.play();
+                            }
+                        }
+                    }
+                }
+                // else: we're waiting for grocery collision line to finish -> do nothing here
             }
 
-            // If grocery finished and we are waiting, play the player's reply
+            // ---- waiting-for-reply handler (run regardless of collision state) ----
             if (m_groceryWaitingPlayerReply)
             {
                 // Guard: if grocery emitter exists, wait until it reports Stopped
@@ -853,8 +884,9 @@ void Game::update(float dt)
                         std::cerr << "DEBUG: player_reply emitter not found / buffer missing\n";
                     }
 
-                    // Done waiting for this collision
+                    // Done waiting for this collision — reset flags so future collisions can re-trigger
                     m_groceryWaitingPlayerReply = false;
+                    m_groceryCollisionPlayed = false;
                 }
             }
         }
