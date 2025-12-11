@@ -74,13 +74,55 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     // Store obstacle with texture index
     obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() - 1);
 
+    // Capture initial Box2D state and filters for reset
+    auto& o = obstacles.back();
+    o.startPosB2 = body->GetPosition();
+    o.startAngle = body->GetAngle();
+    o.startType = b2_staticBody; // created static above
+    o.initialCategoryBits = fixture.filter.categoryBits;
+    o.initialMaskBits = fixture.filter.maskBits;
+
     // Update level extents (in pixels)
     float left = x - scaleX * 0.5f;
     float right = x + scaleX * 0.5f;
     if (left < levelMinX) levelMinX = left;
     if (right > levelMaxX) levelMaxX = right;
+
+}
+void World::resetObstacle(Obstacle& o)
+{
+    if (!o.body) return;
+
+    // Restore body transform, type and velocities
+    o.body->SetType(o.startType);
+    o.body->SetTransform(o.startPosB2, o.startAngle);
+    o.body->SetLinearVelocity(b2Vec2_zero);
+    o.body->SetAngularVelocity(0.f);
+
+    // Restore filter for all fixtures
+    for (b2Fixture* f = o.body->GetFixtureList(); f; f = f->GetNext()) {
+        b2Filter flt = f->GetFilterData();
+        flt.categoryBits = o.initialCategoryBits;
+        flt.maskBits = o.initialMaskBits;
+        f->SetFilterData(flt);
+    }
+
+    // Sync SFML representation and color
+    o.shape.setPosition(o.startPosB2.x * PPM, o.startPosB2.y * PPM);
+    o.shape.setRotation(o.startAngle * 180.f / 3.14159f);
+    o.shape.setFillColor(sf::Color::White);
 }
 
+
+void World::ResetWorld()
+{
+    mIsColliding = false;
+    lastCollidedObstacleIndex = -1;
+    mGameOverTriggered = false;
+
+    for (auto& o : obstacles)
+        resetObstacle(o);
+}
 World::Obstacle* World::getObstacleByTexture(size_t textureIndex)
 {
     for (auto& o : obstacles)
@@ -110,14 +152,40 @@ void World::update(float dt, const sf::Vector2f& camPos)
         obj.shape.setRotation(angle * 180.f / 3.14159f);
     }
 }
+bool World::consumeGameOverTrigger()
+{
+    bool triggered = mGameOverTriggered;
+    mGameOverTriggered = false; // auto-clear on read
+    return triggered;
+}
+static bool IsTouchingGround(b2Body* body, uint16 groundCategoryBits)
+{
+    if (!body) return false;
+    for (b2ContactEdge* ce = body->GetContactList(); ce; ce = ce->next)
+    {
+        b2Contact* c = ce->contact;
+        if (!c || !c->IsTouching()) continue;
 
+        b2Fixture* fa = c->GetFixtureA();
+        b2Fixture* fb = c->GetFixtureB();
+        if (!fa || !fb) continue;
+
+        const uint16 ca = fa->GetFilterData().categoryBits;
+        const uint16 cb = fb->GetFilterData().categoryBits;
+
+        // If either contact fixture is ground, we consider the body touching ground
+        if ((ca & groundCategoryBits) != 0 || (cb & groundCategoryBits) != 0)
+            return true;
+    }
+    return false;
+}
 void World::checkCollision(const sf::RectangleShape& playerShape)
 {
     sf::FloatRect playerBounds = playerShape.getGlobalBounds();
     mIsColliding = false;
-
-    // reset last collided index each frame
     lastCollidedObstacleIndex = -1;
+
+    bool fall6ActiveThisFrame = false;
 
     for (size_t i = 0; i < obstacles.size(); ++i)
     {
@@ -127,79 +195,66 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
         if (playerBounds.intersects(obsBounds))
         {
             mIsColliding = true;
-
-            // record first collided obstacle index
             if (lastCollidedObstacleIndex == -1)
                 lastCollidedObstacleIndex = static_cast<int>(i);
 
-            // Collision behavior mapping (combined & cleaned up)
-            // Yellow: some obstacle markers (1,3)
             if (obj.textureIndex == 1 || obj.textureIndex == 3)
             {
                 obj.shape.setFillColor(sf::Color::Yellow);
             }
-            // Magenta: index 5 (kept from previous mapping)
             else if (obj.textureIndex == 5)
             {
                 obj.shape.setFillColor(sf::Color::Magenta);
             }
-            // Index 7: becomes dynamic (falling / physics-enabled)
             else if (obj.textureIndex == 7)
             {
                 obj.body->SetType(b2_dynamicBody);
-                // keep the color change optional
                 obj.shape.setFillColor(sf::Color::Blue);
             }
-            // Index 8: trigger zone that makes obstacle with textureIndex 6 fall
             else if (obj.textureIndex == 8)
             {
-                Obstacle* fallingObj = getObstacleByTexture(6);
+                // Mark that trigger 8 is active this frame
+                fall6ActiveThisFrame = true;
 
-                if (fallingObj)
+                // Force index 6 to fall while inside trigger 8
+                Obstacle* fallingObj = getObstacleByTexture(6);
+                if (fallingObj && fallingObj->body)
                 {
-                    b2Fixture* f = fallingObj->body->GetFixtureList();
-                    if (f)
+                    if (b2Fixture* f = fallingObj->body->GetFixtureList())
                     {
                         b2Filter filter = f->GetFilterData();
-                        filter.maskBits |= CATEGORY_GROUND;
+                        filter.maskBits |= CATEGORY_GROUND; // ensure ground collision
                         f->SetFilterData(filter);
                     }
                     fallingObj->body->SetType(b2_dynamicBody);
+                    fallingObj->body->SetAwake(true); // wake to ensure falling
                 }
             }
-            // Index 6: "shit" collision -> GAMEOVER behavior (color to Blue as marker)
             else if (obj.textureIndex == 6)
             {
-                obj.shape.setFillColor(sf::Color::Blue);
-                // Additional game-over logic should be handled by caller/game code
+                // Player hits index 6 -> trigger game over (Game handles reset)
+                obj.shape.setFillColor(sf::Color::Red);
+                mGameOverTriggered = true;
             }
-            // Index 11: trigger zone that makes obstacle with textureIndex 10 fall
             else if (obj.textureIndex == 11)
             {
                 Obstacle* fallingObj = getObstacleByTexture(10);
-
-                if (fallingObj)
+                if (fallingObj && fallingObj->body)
                 {
-                    b2Fixture* f = fallingObj->body->GetFixtureList();
-                    if (f)
+                    if (b2Fixture* f = fallingObj->body->GetFixtureList())
                     {
                         b2Filter filter = f->GetFilterData();
                         filter.maskBits |= CATEGORY_GROUND;
                         f->SetFilterData(filter);
                     }
                     fallingObj->body->SetType(b2_dynamicBody);
+                    fallingObj->body->SetAwake(true);
                 }
             }
-            // Index 10: "shit" collision -> GAMEOVER behavior (color to Blue)
-            else if (obj.textureIndex == 10)
-            {
-                obj.shape.setFillColor(sf::Color::Blue);
-            }
-            // Default: leave texture as-is or apply other game-specific reactions
         }
         else
         {
-            // restore texture and reset fill color for non-colliding obstacles
+            // Restore visuals for non-colliding obstacles
             if (obj.textureIndex >= 0 && obj.textureIndex < obstacleTextures.size())
             {
                 sf::Texture& tex = obstacleTextures[obj.textureIndex];
@@ -207,8 +262,19 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
                 sf::Vector2u texSize = tex.getSize();
                 obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
             }
-            // reset color (optional — white works well)
             obj.shape.setFillColor(sf::Color::White);
+        }
+    }
+
+    // Reset index 6 ONLY if it is touching ground, regardless of trigger 8 state
+    if (Obstacle* fallingObj = getObstacleByTexture(6))
+    {
+        if (fallingObj->body && fallingObj->body->GetType() == b2_dynamicBody)
+        {
+            if (IsTouchingGround(fallingObj->body, CATEGORY_GROUND))
+            {
+                resetObstacle(*fallingObj);
+            }
         }
     }
 }

@@ -238,32 +238,14 @@ Game::Game()
     m_mainMenu->BuildLayout();
 
     m_mainMenu->OnPlay = [this]() {
-        // Reset gameplay state and timers before starting
-        psychoMode = false;
-        m_player->SetColor(sf::Color::Red);
-        m_player->SetAudioState(PlayerAudioState::Neutral);
-        m_lastAppliedAudioState = PlayerAudioState::Neutral;
-
-        splitMode = false;
-        inTransition = false;
-        pendingEnable = false;
-        m_camera.setRotation(0.f);
-
-        nextPsychoSwitch = randomFloat(6.f, 8.f);
-        psychoClock.restart();
-
-        nextSplitCheck = randomFloat(1.f, 3.f);
-        splitClock.restart();
-
-        inputLocked = false;
-        inputLockPending = false;
-        nextInputLockCheck = randomFloat(3.f, 6.f);
-        inputLockClock.restart();
+        ResetGameplay(true);
 
         m_state = GameState::PLAYING;
         m_audio.StartMusic();
-        if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
-        if (m_effectEmitter->buffer) m_effectEmitter->sound.play();
+
+        // start looping ambient emitters only if buffers exist
+        if (m_dialogueEmitter && m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
+        if (m_effectEmitter && m_effectEmitter->buffer) m_effectEmitter->sound.play();
         };
     m_mainMenu->OnExit = [this]() {
         m_window.close();
@@ -387,6 +369,114 @@ void Game::processEvents()
             }
         }
     }
+}
+// Game.cpp
+
+void Game::ResetGameplay(bool resetPlayerPosition)
+{
+    // Core gameplay flags
+    psychoMode = false;
+    splitMode = false;
+    inTransition = false;
+    pendingEnable = false;
+    inputLocked = false;
+    inputLockPending = false;
+
+    // Camera & audio state
+    m_camera.setRotation(0.f);
+    m_lastAppliedAudioState = PlayerAudioState::Neutral;
+    if (m_worldView)
+        m_worldView->ResetWorld();
+    // Reset player audio & visuals
+    if (m_player) {
+        m_player->SetAudioState(PlayerAudioState::Neutral);
+        m_player->SetColor(sf::Color::Red);
+
+        // Reset physics body position and velocities when requested.
+        if (resetPlayerPosition) {
+            b2Body* body = m_player->GetBody();
+            if (body) {
+                // use the same start position you used when creating the player
+                body->SetTransform(b2Vec2(140.f * INV_PPM, 800.f * INV_PPM), 0.f);
+                body->SetLinearVelocity(b2Vec2(0.f, 0.f));
+                body->SetAngularVelocity(0.f);
+            }
+            // If your Player class has additional internal state (health, anim state),
+            // add a Reset() method in Player and call it here:
+            // m_player->Reset();
+        } else {
+            // If not resetting position, still ensure velocities are zeroed
+            b2Body* body = m_player->GetBody();
+            if (body) {
+                body->SetLinearVelocity(b2Vec2(0.f, 0.f));
+                body->SetAngularVelocity(0.f);
+            }
+        }
+    }
+
+    // Reset timers & randomized next-times
+    psychoClock.restart();
+    nextPsychoSwitch = randomFloat(6.f, 8.f);
+
+    splitClock.restart();
+    nextSplitCheck = randomFloat(1.f, 3.f);
+    splitDuration = 0.f;
+
+    inputLockClock.restart();
+    nextInputLockCheck = randomFloat(3.f, 6.f);
+
+    transitionClock.restart();
+    m_transitionStartRotation = 0.f;
+    m_transitionTargetRotation = 0.f;
+
+    // Reset player emitters: stop them and set position to player
+    b2Vec2 playerPos = {0.f, 0.f};
+    if (m_player && m_player->GetBody()) playerPos = m_player->GetBody()->GetPosition();
+    for (auto& [id, emitter] : m_playerEmitters) {
+        if (emitter) {
+            emitter->sound.stop();
+            emitter->sound.setPlayingOffset(sf::Time::Zero);
+            emitter->position = playerPos;
+        }
+    }
+
+    // Reset dedicated emitters
+    if (m_dialogueEmitter) { m_dialogueEmitter->sound.stop(); m_dialogueEmitter->sound.setPlayingOffset(sf::Time::Zero); }
+    if (m_effectEmitter)   { m_effectEmitter->sound.stop();   m_effectEmitter->sound.setPlayingOffset(sf::Time::Zero); }
+    if (m_playerReply)     { m_playerReply->sound.stop();     m_playerReply->sound.setPlayingOffset(sf::Time::Zero); }
+
+    // Grocery / obstacle audio state + timers
+    m_groceryCollisionPlayed = false;
+    m_groceryWaitingPlayerReply = false;
+    m_groceryCooldownActive = false;
+    m_groceryClock.restart();
+    m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+    m_groceryCooldownClock.restart();
+
+    // If grocery emitter exists, update its position to match obstacle
+    if (m_groceryObstacleIndex >= 0 && m_worldView) {
+        b2Vec2 gpos = m_worldView->getObstacleBodyPosition(m_groceryObstacleIndex);
+        if (m_groceryA) { m_groceryA->sound.stop(); m_groceryA->sound.setPlayingOffset(sf::Time::Zero); m_groceryA->position = gpos; }
+        if (m_groceryB) { m_groceryB->sound.stop(); m_groceryB->sound.setPlayingOffset(sf::Time::Zero); m_groceryB->position = gpos; }
+        if (m_groceryCollision) { m_groceryCollision->sound.stop(); m_groceryCollision->sound.setPlayingOffset(sf::Time::Zero); m_groceryCollision->position = gpos; }
+    }
+
+    // Reset audio mixer volumes & crossfade state (keeps your configured volumes)
+    m_audio.SetMasterVolume(1.f);
+    m_audio.SetMusicVolume(0.9f);
+    m_audio.SetBackgroundVolume(0.6f);
+    m_audio.SetDialogueVolume(1.0f);
+    m_audio.SetEffectsVolume(1.f);
+
+    // Ensure music state is neutral (we don't automatically start music here,
+    // caller (OnPlay) will call StartMusic when appropriate)
+    m_audio.StopMusic();
+
+    // Ensure the AudioManager will return to neutral music after reset.
+    // If psycho/crazy track was active previously, force a transition back to neutral
+    // so the crazy music won't keep playing after a reset.
+    m_audio.CrossfadeToNeutral();
+    m_audio.StartMusic();
 }
 
 void Game::update(float dt)
@@ -648,6 +738,16 @@ void Game::update(float dt)
             }
         }
         m_worldView->checkCollision(playerShape);
+        if (m_worldView && m_worldView->consumeGameOverTrigger())
+        {
+            // Reset gameplay (keep position or not as you prefer)
+            ResetGameplay(true);
+
+            // Optionally return to menu or keep playing with fresh state
+            // m_state = GameState::MENU;
+            // Or restart music, etc., if you stay in PLAYING:
+            m_audio.StartMusic();
+        }
         // ----- Grocery: update emitter positions -----
         // ----- Grocery: update emitter positions -----
         if (m_groceryObstacleIndex >= 0)

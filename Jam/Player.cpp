@@ -272,12 +272,83 @@ void Player::PlayWave()
     }
 }
 
-
-
-
 // ------------------------------------------------------------
 void Player::Draw(RenderWindow& window)
 {
     SyncGraphics();
     window.draw(m_sprite);
+}
+
+// ------------------------------------------------------------
+// Collision filter control
+// ------------------------------------------------------------
+void Player::SetCollisionCategory(uint16 categoryBits)
+{
+    if (!m_body) return;
+    for (b2Fixture* f = m_body->GetFixtureList(); f; f = f->GetNext())
+    {
+        b2Filter flt = f->GetFilterData();
+        flt.categoryBits = categoryBits;
+        f->SetFilterData(flt);
+    }
+}
+
+void Player::SetCollisionMask(uint16 maskBits)
+{
+    if (!m_body) return;
+    for (b2Fixture* f = m_body->GetFixtureList(); f; f = f->GetNext())
+    {
+        b2Filter flt = f->GetFilterData();
+        flt.maskBits = maskBits;
+        f->SetFilterData(flt);
+    }
+}
+
+void Player::SetFootSensorMask(uint16 maskBits)
+{
+    if (!m_footFixture) return;
+    b2Filter flt = m_footFixture->GetFilterData();
+    flt.maskBits = maskBits;
+    m_footFixture->SetSensor(true);
+    m_footFixture->SetFilterData(flt);
+}
+
+void Player::DisableAllCollisions()
+{
+    if (m_body)
+    {
+        for (b2Fixture* f = m_body->GetFixtureList(); f; f = f->GetNext())
+        {
+            b2Filter flt = f->GetFilterData();
+            flt.maskBits = 0; // collide with nothing
+            f->SetFilterData(flt);
+        }
+    }
+
+    if (m_footFixture)
+    {
+        b2Filter flt = m_footFixture->GetFilterData();
+        flt.maskBits = 0; // detect nothing
+        m_footFixture->SetFilterData(flt);
+    }
+}
+
+void Player::RestoreCollisions(uint16 maskBits)
+{
+    if (m_body)
+    {
+        for (b2Fixture* f = m_body->GetFixtureList(); f; f = f->GetNext())
+        {
+            b2Filter flt = f->GetFilterData();
+            flt.maskBits = maskBits;
+            f->SetFilterData(flt);
+        }
+    }
+
+    if (m_footFixture)
+    {
+        b2Filter flt = m_footFixture->GetFilterData();
+        flt.maskBits = maskBits;
+        m_footFixture->SetFilterData(flt);
+    }
 }

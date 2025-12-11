@@ -43,6 +43,20 @@ public:
     // Movement state hint (set by input layer)
     void SetWalking(bool walking) { m_isWalking = walking; }
 
+    // --------------------
+    // Collision controls
+    // --------------------
+    // Change the player's collision category (what group it belongs to)
+    void SetCollisionCategory(uint16 categoryBits);
+    // Change what the player collides with (bitmask of categories)
+    void SetCollisionMask(uint16 maskBits);
+    // Control the foot sensor separately (e.g., only ground)
+    void SetFootSensorMask(uint16 maskBits);
+    // Disable all physical and sensor collisions
+    void DisableAllCollisions();
+    // Restore collisions for all fixtures with a provided mask
+    void RestoreCollisions(uint16 maskBits);
+
 private:
     void applyCollisionFromSprite();
 
