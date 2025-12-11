@@ -31,7 +31,7 @@ private:
         void BeginContact(b2Contact* contact) override;
         void EndContact(b2Contact* contact) override;
     };
-
+    float m_lastPlayerReplyTime = -100.f;
     void processEvents();
     void update(float dt);
     void render();
@@ -127,6 +127,10 @@ private:
     bool m_running;
 
     PlayerAudioState m_lastAppliedAudioState = PlayerAudioState::Neutral;
+
+    sf::Clock m_groceryCooldownClock;
+    float     m_groceryCooldownDuration = 4.f; // seconds
+    bool      m_groceryCooldownActive = false;
 };
 
 #endif // GAME_H
