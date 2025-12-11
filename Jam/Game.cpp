@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "World.h"
+#include "OptionsUI.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -268,205 +269,8 @@ Game::Game()
         m_window.close();
         };
     m_mainMenu->OnOptions = [this]() {
-    // Fullscreen modal Options window
-    const auto desktop = sf::VideoMode::getDesktopMode();
-    sf::RenderWindow opts(desktop, "Options", sf::Style::Fullscreen);
-    opts.setFramerateLimit(60);
-
-    // ------------------------------------
-    // Load Controls image
-    // ------------------------------------
-    sf::Texture controlsTex;
-    controlsTex.loadFromFile("Assets/MainMenu/Controls.png");
-    sf::Sprite controlsSprite(controlsTex);
-
-    // Scale + center image (keeps aspect ratio)
-    float maxWidth = desktop.width *0.5f;
-    float scale = maxWidth / controlsTex.getSize().x;
-    controlsSprite.setScale(scale, scale);
-    controlsSprite.setPosition(
-        desktop.width *0.5f - controlsSprite.getGlobalBounds().width *0.5f,
-        desktop.height *0.1f
-    );
-
-    // ------------------------------------
-    // Movement Controls text (added)
-    // ------------------------------------
-    sf::Text moveText("Movement Controls", m_font,48);
-    moveText.setFillColor(sf::Color::White);
-
-    sf::FloatRect imgBounds = controlsSprite.getGlobalBounds();
-    moveText.setPosition(
-        imgBounds.left + imgBounds.width *0.5f - moveText.getGlobalBounds().width *0.5f,
-        imgBounds.top - moveText.getGlobalBounds().height -10.f
-    );
-
-    // Volume sliders
-    struct Slider {
-        std::string label;
-        float value;
-        sf::Text labelText;
-        sf::Text valueText;
-        sf::RectangleShape bar;
-        sf::RectangleShape fill;
-        sf::CircleShape knob;
-        float x, y, width, height, knobRadius;
-        bool dragging{ false };
-        std::function<void(float)> apply;
+        OptionsUI::Show(m_audio, m_font, m_mainMenu.get());
     };
-
-    std::vector<Slider> sliders;
-
-    auto makeSlider = [&](const std::string& label, float initial, float y, std::function<void(float)> apply){
-        Slider s;
-        s.label = label;
-        s.value = std::clamp(initial,0.f,1.f);
-        s.x =60.f;
-        s.y = y;
-        s.width = desktop.width -120.f;
-        s.height =10.f;
-        s.knobRadius =18.f;
-        s.apply = apply;
-
-        s.labelText = sf::Text(label, m_font,42);
-        s.labelText.setFillColor(sf::Color::White);
-        s.labelText.setPosition(s.x, y -60.f);
-
-        s.valueText = sf::Text("", m_font,32);
-        s.valueText.setFillColor(sf::Color(200,200,200));
-        s.valueText.setPosition(s.x, y -20.f);
-
-        s.bar = sf::RectangleShape(sf::Vector2f(s.width, s.height));
-        s.bar.setPosition(s.x, s.y);
-        s.bar.setFillColor(sf::Color(100,100,140));
-
-        s.fill = sf::RectangleShape(sf::Vector2f(s.width * s.value, s.height));
-        s.fill.setPosition(s.x, s.y);
-        s.fill.setFillColor(sf::Color(120,180,255));
-
-        s.knob = sf::CircleShape(s.knobRadius);
-        s.knob.setFillColor(sf::Color(240,240,240));
-        s.knob.setOutlineThickness(2.f);
-        s.knob.setOutlineColor(sf::Color(80,80,120));
-        float cx = s.x + s.width * s.value;
-        s.knob.setPosition(cx - s.knobRadius, s.y + s.height /2.f - s.knobRadius);
-
-        auto updateUI = [&](Slider& sl, float v){
-            sl.value = std::clamp(v,0.f,1.f);
-            if (sl.apply) sl.apply(sl.value);
-            sl.fill.setSize(sf::Vector2f(sl.width * sl.value, sl.height));
-            float cx2 = sl.x + sl.width * sl.value;
-            sl.knob.setPosition(cx2 - sl.knobRadius, sl.y + sl.height /2.f - sl.knobRadius);
-            int percent = static_cast<int>(std::round(sl.value *100.f));
-            sl.valueText.setString(std::to_string(percent) + "%");
-        };
-        updateUI(s, s.value);
-        sliders.push_back(s);
-        return updateUI; // not used externally
-    };
-
-    // Initialize sliders with current volumes (AudioManager tracks values internally)
-    makeSlider("Master",1.0f, desktop.height *0.55f, [&](float v){ m_audio.SetMasterVolume(v); });
-    makeSlider("Music",0.9f, desktop.height *0.62f, [&](float v){ m_audio.SetMusicVolume(v); });
-    makeSlider("Background",0.6f, desktop.height *0.69f, [&](float v){ m_audio.SetBackgroundVolume(v); });
-    makeSlider("Dialogue",1.0f, desktop.height *0.76f, [&](float v){ m_audio.SetDialogueVolume(v); });
-    makeSlider("Effects",1.0f, desktop.height *0.83f, [&](float v){ m_audio.SetEffectsVolume(v); });
-
-    bool exiting = false;
-    sf::Clock exitClock;
-    const float exitDuration =0.35f;
-    sf::RectangleShape fadeOverlay(sf::Vector2f((float)desktop.width, (float)desktop.height));
-    fadeOverlay.setFillColor(sf::Color(0,0,0,0));
-
-    while (opts.isOpen()) {
-        sf::Event ev;
-        while (opts.pollEvent(ev)) {
-            if (exiting) continue;
-
-            if (ev.type == sf::Event::Closed ||
-                (ev.type == sf::Event::KeyPressed && ev.key.code == sf::Keyboard::Escape)) {
-                exiting = true;
-                exitClock.restart();
-            }
-
-            auto handleMouseToSlider = [&](Slider& s, const sf::Vector2f& mp){
-                sf::FloatRect bounds(s.x, s.y -20.f, s.width, s.height +40.f);
-                if (bounds.contains(mp)) {
-                    s.dragging = true;
-                    float newVal = (mp.x - s.x) / s.width;
-                    float clamped = std::clamp(newVal,0.f,1.f);
-                    // update
-                    s.fill.setSize(sf::Vector2f(s.width * clamped, s.height));
-                    float cx = s.x + s.width * clamped;
-                    s.knob.setPosition(cx - s.knobRadius, s.y + s.height /2.f - s.knobRadius);
-                    int percent = static_cast<int>(std::round(clamped *100.f));
-                    s.valueText.setString(std::to_string(percent) + "%");
-                    if (s.apply) s.apply(clamped);
-                    s.value = clamped;
-                }
-            };
-
-            if (ev.type == sf::Event::MouseButtonPressed && ev.mouseButton.button == sf::Mouse::Left) {
-                sf::Vector2f mp((float)ev.mouseButton.x, (float)ev.mouseButton.y);
-                for (auto& s : sliders) handleMouseToSlider(s, mp);
-            }
-
-            if (ev.type == sf::Event::MouseButtonReleased && ev.mouseButton.button == sf::Mouse::Left) {
-                for (auto& s : sliders) s.dragging = false;
-            }
-
-            if (ev.type == sf::Event::MouseMoved) {
-                sf::Vector2f mp((float)ev.mouseMove.x, (float)ev.mouseMove.y);
-                for (auto& s : sliders) {
-                    if (s.dragging) {
-                        float newVal = (mp.x - s.x) / s.width;
-                        float clamped = std::clamp(newVal,0.f,1.f);
-                        s.fill.setSize(sf::Vector2f(s.width * clamped, s.height));
-                        float cx = s.x + s.width * clamped;
-                        s.knob.setPosition(cx - s.knobRadius, s.y + s.height /2.f - s.knobRadius);
-                        int percent = static_cast<int>(std::round(clamped *100.f));
-                        s.valueText.setString(std::to_string(percent) + "%");
-                        if (s.apply) s.apply(clamped);
-                        s.value = clamped;
-                    }
-                }
-            }
-        }
-
-        // fade out animation
-        if (exiting) {
-            float t = std::min(exitClock.getElapsedTime().asSeconds() / exitDuration, 1.f);
-            float ease = t * t * (3.f - 2.f * t);
-            uint8_t alpha = (uint8_t)(255.f * ease);
-            fadeOverlay.setFillColor(sf::Color(0, 0, 0, alpha));
-
-            if (t >= 1.f) {
-                opts.close();
-                break;
-            }
-        }
-
-        opts.clear(sf::Color(30,30,40));
-
-        opts.draw(moveText);
-        opts.draw(controlsSprite);
-        // draw sliders
-        for (auto& s : sliders) {
-            opts.draw(s.labelText);
-            opts.draw(s.valueText);
-            opts.draw(s.bar);
-            opts.draw(s.fill);
-            opts.draw(s.knob);
-        }
-        if (exiting) opts.draw(fadeOverlay);
-
-        opts.display();
-    }
-
-    if (m_mainMenu) {
-        m_mainMenu->ResetMobileVisual();
-    }
-};
 
         
     m_frameClock.restart();
@@ -853,6 +657,15 @@ void Game::update(float dt)
 
         if (m_groceryObstacleIndex >= 0)
         {
+            // expire cooldown if elapsed
+            if (m_groceryCooldownActive &&
+                m_groceryCooldownClock.getElapsedTime().asSeconds() >= m_groceryCooldownDuration)
+            {
+                m_groceryCooldownActive = false;
+                // optional debug:
+                std::cerr << "DEBUG: grocery cooldown expired\n";
+            }
+
             if (collidingWithGrocery)
             {
                 // Stop ambient lines so collision line is clean
@@ -860,7 +673,8 @@ void Game::update(float dt)
                 if (m_groceryB && m_groceryB->sound.getStatus() == sf::Sound::Playing) m_groceryB->sound.stop();
 
                 // If we haven't yet started the collision sequence for this contact, start it
-                if (!m_groceryCollisionPlayed)
+                // but only if cooldown is NOT active
+                if (!m_groceryCollisionPlayed && !m_groceryCooldownActive)
                 {
                     if (m_groceryCollision && m_groceryCollision->buffer) {
                         m_groceryCollision->sound.stop(); // ensure restart
@@ -870,6 +684,7 @@ void Game::update(float dt)
                     }
                     m_groceryCollisionPlayed = true;
                 }
+                // else: either it's already started for this contact, or we're in cooldown -> do nothing
             }
             else
             {
@@ -923,15 +738,22 @@ void Game::update(float dt)
                         std::cerr << "DEBUG: player_reply emitter not found / buffer missing\n";
                     }
 
-                    // Done waiting for this collision — reset flags so future collisions can re-trigger
+                    // Done waiting for this collision — reset flags so future collisions can re-trigger,
+                    // but start cooldown so they cannot re-trigger immediately
                     m_groceryWaitingPlayerReply = false;
                     m_groceryCollisionPlayed = false;
+
+                    // start cooldown to prevent immediate retrigger
+                    m_groceryCooldownActive = true;
+                    m_groceryCooldownClock.restart();
+                    std::cerr << "DEBUG: grocery cooldown started (" << m_groceryCooldownDuration << "s)\n";
                 }
             }
         }
         else
         {
             // no collision — reset collision sequence and enable ambient random chatter
+            // NOTE: do NOT clear the cooldown here; cooldown should persist even if obstacle isn't present.
             m_groceryCollisionPlayed = false;
             m_groceryWaitingPlayerReply = false;
 
@@ -959,6 +781,7 @@ void Game::update(float dt)
                 }
             }
         }
+
 
 
     }
