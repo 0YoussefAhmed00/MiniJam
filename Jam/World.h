@@ -49,7 +49,8 @@ public:
     // ---------------------------------------------------------------------
     void update(float dt, const sf::Vector2f& camPos);
     void draw(sf::RenderWindow& window);
-    void checkCollision(const sf::RectangleShape& playerShape);
+    // Accept whether the player is calm (walking or idle) so obstacles may react
+    void checkCollision(const sf::RectangleShape& playerShape, bool playerCalm = false);
 
     void drawParallaxBackground(sf::RenderWindow& window);
     void drawParallaxForeground(sf::RenderWindow& window);
@@ -103,7 +104,9 @@ private:
     sf::Vector2f m_birdStartPos;           // starting position
     bool m_poopDropped = false;
 
-  
+    // Doggie angry texture (optional asset)
+    sf::Texture m_doggieAngryTexture;
+
     // Collision debug info
     bool mIsColliding = false;
     int  lastCollidedObstacleIndex = -1;

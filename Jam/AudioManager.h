@@ -44,6 +44,13 @@ public:
     void SetDialogueVolume(float v);
     void SetEffectsVolume(float v);
 
+    // volume getters (0..1)
+    float GetMasterVolume() const { return masterVolume; }
+    float GetMusicVolume() const { return musicVolume; }
+    float GetBackgroundVolume() const { return backgroundVolume; }
+    float GetDialogueVolume() const { return dialogueVolume; }
+    float GetEffectsVolume() const { return effectsVolume; }
+
     void SetCrossfadeTime(float t);
 
     void Update(float dt, const b2Vec2& listenerPos);
