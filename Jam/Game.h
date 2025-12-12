@@ -9,11 +9,26 @@
 #include "AudioManager.h"
 #include "Player.h"
 #include "MainMenu.h"
+#include <vector>
 
 class World; // forward declaration
 
 // Game-wide state
 enum class GameState { MENU, PLAYING, WIN, LOSE, EXIT, CurrentLevel };
+
+// near other includes in Game.h
+
+
+struct Bus {
+    sf::Sprite sprite;
+    sf::Vector2f startPos;   // pixel coordinates
+    sf::Vector2f endPos;     // pixel coordinates
+    float duration = 2.f;    // seconds to cross (user requested 2s)
+    float progress = 0.f;    // 0..1
+    bool active = false;
+    bool playedEmitter = false;
+};
+
 
 class Game {
 public:
@@ -36,6 +51,7 @@ private:
     float m_lastPlayerReplyTime = -100.f;
     void processEvents();
     void update(float dt);
+    void SpawnBus();
     void render();
 
 private:
@@ -87,6 +103,15 @@ private:
     float m_nextGroceryLineTime =0.f;
     bool m_lastGroceryColliding = false;
 
+    // Bus system
+    sf::Texture m_busTexture;
+    std::vector<Bus> m_buses;
+    sf::Clock m_busSpawnClock;
+    float m_busSpawnInterval = 10.f;   // every 30 seconds
+    float m_busTravelTime = 3.f;       // how long it takes (2s)
+    float m_busSpawnMargin = 800.f;    // how far outside the view the bus starts/ends (pixels)
+    std::shared_ptr<AudioEmitter> m_busEmitter; // shared emitter used for bus pass sound
+    std::string m_busAudioPath = "assets/Audio/bus_pass.wav"; // ensure this file exists
 
 
     std::shared_ptr<AudioEmitter> PlayerReply;
@@ -114,6 +139,14 @@ private:
     sf::Clock inputLockClock;
     static constexpr float INPUT_LOCK_DURATION =2.f;
     float nextInputLockCheck;
+
+    // Game.h (inside class Game, private:)
+    bool m_gameOver = false;                      // true while countdown active
+    sf::Clock m_gameOverClock;
+    float m_gameOverDelay = 3.f;
+    sf::Text m_gameOverText;
+    bool m_disableInputDuringGameOver = false;    // prevents handling input while counting down
+
 
     // Debug text / UI
     sf::Font m_font;
