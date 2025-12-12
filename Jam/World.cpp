@@ -12,23 +12,123 @@ World::World(b2World& worldRef)
     initParallax();
 
     // Create ALL obstacles here (from the second / latest version)
-    createObstacle(410, 588 + 210, true, 170, 170, "Assets/Obstacles/Untitled-2.png");   // Dynamic obstacle 
-    createObstacle(700, 470 + 210, true, 450, 400, "Assets/Obstacles/foull car.png"); // Static (ground-only) obstacle
-    createObstacle(1800, 646 + 210, true, 200, 40, "Assets/Obstacles/Closed_sewers_cap.png");
+    createObstacle(400, 568 + 210, true, 170, 190, "Assets/Obstacles/Untitled-2.png");   //0
+    createObstacle(1260, 470 + 210, false, 450, 400, "Assets/Obstacles/foull car.png");    //1
 
-    createObstacle(2890, 630 + 210, false, 100, 30, "Assets/Obstacles/sewers_cap1.png");
-    createObstacle(2900, 620 + 210, false, 300, 140, "Assets/Obstacles/sewers.png");
-    createObstacle(3800, 600 + 170, false, 250 * 1.1f, 170 * 1.2f, "Assets/Obstacles/grocery.png");
+    createObstacle(1800, 620 + 235, false, 180, 30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
 
-    createObstacle(4825, 0 + 210, false, 120, 80, "Assets/Obstacles/the shit.png");
 
-    createObstacle(4800, 0 + 210, false, 150, 100, "Assets/Obstacles/1.png");
-    createObstacle(4700, 600 + 210, false, 600, 100, "Assets/Obstacles/Untitled-2.png");
+    createObstacle(2900, 620 + 230, false, 110, 35, "Assets/Obstacles/sewers_cap1.png"); //3
 
-    createObstacle(6000, 640 + 170, false, 220, 220, "Assets/Obstacles/doggie.png");
+    createObstacle(2910, 620 + 200, false, 350, 200, "Assets/Obstacles/sewers.png"); //4
 
-    createObstacle(7200, -100 + 210, false, 250, 150, "Assets/Obstacles/man falling.png");
-    createObstacle(7200, 600 + 210, false, 400, 100, "Assets/Obstacles/Untitled-2.png");
+    createObstacle(3800, 600 + 170, false, 250 * 1.1f, 170 * 1.2f, "Assets/Obstacles/grocery.png"); //5
+
+    createObstacle(4825, 0 + 210, false, 120, 80, "Assets/Obstacles/the shit.png"); //6
+
+    //bird
+    createObstacle(4800, 0 + 210, false, 150, 100, "Assets/Obstacles/Bird1.png"); //7
+    createObstacle(4700, 600 + 210, false, 600, 100, "Assets/Obstacles/Untitled-2.png"); //8
+
+    createObstacle(6000, 640 + 170, false, 220, 220, "Assets/Obstacles/doggie.png"); //9
+
+    createObstacle(7200, -100 + 210, false, 250, 150, "Assets/Obstacles/man falling.png"); //10
+    createObstacle(7200, 600 + 210, false, 400, 100, "Assets/Obstacles/Untitled-2.png"); //11
+
+
+    createObstacle(630, 580 + 210, true, 150, 160, "Assets/Obstacles/trash.png");   //12
+    createObstacle(520, 595 + 210, true, 140, 155, "Assets/Obstacles/trash-1.png");   //13
+
+
+    /////Obstacles for only dicoration (the player does not interact with them)
+    createObstacle(680, 645 + 210, true, 40, 45, "Assets/Obstacles/no cola.png");   
+    createObstacle(-470, 510 + 210, true, 440, 240, "Assets/Obstacles/bus.png");   
+    createObstacle(-640, 560 + 210, true, 130, 130, "Assets/Obstacles/trash.png");   
+
+
+
+
+
+
+
+
+
+    // Sewers cap animation setup (textureIndex == 3)
+    std::vector<std::string> sewerFrames = {
+        "Assets/Obstacles/sewers_cap1.png",
+        "Assets/Obstacles/sewers_cap2.png",
+        "Assets/Obstacles/sewers_cap3.png",
+        "Assets/Obstacles/sewers_cap4.png",
+        "Assets/Obstacles/sewers_cap5.png",
+        "Assets/Obstacles/sewers_cap6.png",
+        "Assets/Obstacles/sewers_cap7.png",
+        "Assets/Obstacles/sewers_cap8.png"
+    };
+    m_sewersAnim.AddClip("open", sewerFrames, 0.06f, /*loop=*/false);
+    m_sewersAnim.SetClip("open", true);   // start on frame 0
+
+    // Find the obstacle that uses sewers_cap1.png
+    Obstacle* cap = getObstacleByTexture(3);
+
+    if (cap)
+    {
+        m_sewersBasePos = cap->shape.getPosition();
+        m_sewersSprite.setPosition(m_sewersBasePos);
+    }
+
+    m_sewersAnim.BindSprite(&m_sewersSprite);
+    m_sewersSprite.setScale(0.7f, 0.7f); 
+
+    m_sewersPlaying = false;
+    m_sewersLastFrame = -1;   
+
+
+
+     // 🐦 Bird animation setup
+    // Bird frames (your 3 PNGs)
+    std::vector<std::string> birdFrames = {
+        "Assets/Obstacles/Bird1.png",
+        "Assets/Obstacles/Bird2.png",
+        "Assets/Obstacles/Bird3.png"
+    };
+
+    // Create a looping clip called "fly"
+    m_birdAnim.AddClip("fly", birdFrames, 0.08f, true);
+    m_birdAnim.SetClip("fly", true);
+
+    // Find the obstacle that uses Bird1.png
+    Obstacle* birdObs = getObstacleByTexture(7);  // Bird1 index in this file
+
+    if (birdObs)
+    {
+        // Starting position for the bird patrol
+        m_birdStartPos = birdObs->shape.getPosition();
+        m_birdSprite.setPosition(m_birdStartPos);
+    }
+    else
+    {
+        // Fallback, just in case
+        m_birdStartPos = sf::Vector2f(4800.f, 210.f);
+        m_birdSprite.setPosition(m_birdStartPos);
+    }
+
+    // Bind sprite to animation
+    m_birdAnim.BindSprite(&m_birdSprite);
+
+    // Optional: make the bird smaller
+    m_birdSprite.setScale(0.4f, 0.4f);
+
+    // Patrol settings (left/right limits around the start position)
+    m_birdMinX = m_birdStartPos.x - 250.f;  // left limit
+    m_birdMaxX = m_birdStartPos.x + 250.f;  // right limit
+    m_birdSpeed = 150.f;                    // pixels per second
+
+    m_birdGoingRight = true;
+    m_birdAnim.SetFacingRight(true);
+
+
+    
+
 }
 
 void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
@@ -61,7 +161,7 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
     fixture.filter.maskBits = onlyGround ? (CATEGORY_GROUND | CATEGORY_PLAYER) : CATEGORY_GROUND;
     fixture.friction = 0.0f;
 
-    
+
     body->CreateFixture(&fixture);
 
     // -------- SFML SHAPE --------
@@ -122,6 +222,20 @@ void World::ResetWorld()
 
     for (auto& o : obstacles)
         resetObstacle(o);
+
+    // 🔁 reset sewer animation state
+    m_sewersPlaying = false;
+    m_sewersLastFrame = -1;
+    m_sewersAnim.Reset();
+    m_sewersSprite.setPosition(m_sewersBasePos);
+
+    // 🐦 reset bird
+    m_birdSprite.setPosition(m_birdStartPos);
+    m_birdGoingRight = true;
+    m_birdAnim.SetFacingRight(true);
+    m_birdAnim.Reset();
+
+    m_poopDropped = false;
 }
 World::Obstacle* World::getObstacleByTexture(size_t textureIndex)
 {
@@ -142,16 +256,64 @@ void World::update(float dt, const sf::Vector2f& camPos)
 
     updateParallax(camPos);
 
-    // Sync obstacles
+    // Sync obstacles with Box2D (keep this)
     for (auto& obj : obstacles)
     {
         b2Vec2 pos = obj.body->GetPosition();
-        float angle = obj.body->GetAngle();
+        float  angle = obj.body->GetAngle();
 
         obj.shape.setPosition(pos.x * PPM, pos.y * PPM);
         obj.shape.setRotation(angle * 180.f / 3.14159f);
     }
+
+    
+    // ✅ Animate sewer cap + move to the right on each frame change
+    if (m_sewersPlaying)
+    {
+        m_sewersAnim.Update(dt);
+
+        // Read current frame index from the Animation class
+        int currentFrame = static_cast<int>(m_sewersAnim.CurrentFrameIndex());
+
+        // If the frame changed since last update → move sprite
+        if (currentFrame != m_sewersLastFrame)
+        {
+            m_sewersLastFrame = currentFrame;
+            //How much to move to the right per frame (tweak this)
+            float stepX = 60.f;   
+            float stepY = 0.f;   
+            m_sewersSprite.move(stepX, stepY);
+        }
+    }
+
+        // 🐦 Update bird animation + left/right movement
+    m_birdAnim.Update(dt);  // flap
+
+    sf::Vector2f pos = m_birdSprite.getPosition();
+
+    // Direction: +1 = right, -1 = left
+    float dir = m_birdGoingRight ? 1.f : -1.f;
+    pos.x += dir * m_birdSpeed * dt;
+
+    // Check limits and flip direction
+    if (pos.x > m_birdMaxX)
+    {
+        pos.x = m_birdMaxX;
+        m_birdGoingRight = false;
+        m_birdAnim.SetFacingRight(false);  // flip sprite horizontally
+    }
+    else if (pos.x < m_birdMinX)
+    {
+        pos.x = m_birdMinX;
+        m_birdGoingRight = true;
+        m_birdAnim.SetFacingRight(true);   // face right again
+    }
+
+    m_birdSprite.setPosition(pos);
+
+
 }
+
 bool World::consumeGameOverTrigger()
 {
     bool triggered = mGameOverTriggered;
@@ -198,9 +360,19 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
             if (lastCollidedObstacleIndex == -1)
                 lastCollidedObstacleIndex = static_cast<int>(i);
 
-            if (obj.textureIndex == 1 || obj.textureIndex == 3)
+            // 🔥 SEWER CAP COLLISION
+            if (obj.textureIndex == 3)
             {
-                obj.shape.setFillColor(sf::Color::Yellow);
+                obj.shape.setFillColor(sf::Color::Yellow);  // keep your color
+
+                // ▶ start the animation once
+                if (!m_sewersPlaying)
+                {
+                    m_sewersPlaying = true;
+                    m_sewersLastFrame = -1;          // so first frame movement works
+                    m_sewersAnim.Reset();            // reset time & frame index to 0
+                    m_sewersSprite.setPosition(m_sewersBasePos); // start from base
+                }
             }
             else if (obj.textureIndex == 5)
             {
@@ -213,23 +385,44 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
             }
             else if (obj.textureIndex == 8)
             {
-                // Mark that trigger 8 is active this frame
+                // Mark that trigger 8 is active this frame (can keep if you use it elsewhere)
                 fall6ActiveThisFrame = true;
 
-                // Force index 6 to fall while inside trigger 8
-                Obstacle* fallingObj = getObstacleByTexture(6);
-                if (fallingObj && fallingObj->body)
+                // Only drop the poop ONCE per reset
+                if (!m_poopDropped)
                 {
-                    if (b2Fixture* f = fallingObj->body->GetFixtureList())
+                    Obstacle* fallingObj = getObstacleByTexture(6); // "the shit" obstacle
+                    if (fallingObj && fallingObj->body)
                     {
-                        b2Filter filter = f->GetFilterData();
-                        filter.maskBits |= CATEGORY_GROUND; // ensure ground collision
-                        f->SetFilterData(filter);
+                        // 1) Place poop under the bird (X from bird, Y from its start height)
+                        sf::Vector2f birdPos = m_birdSprite.getPosition();
+
+                        b2Vec2 newPos(
+                            birdPos.x * INV_PPM,
+                            fallingObj->startPosB2.y      // keep original Y starting height
+                        );
+                        fallingObj->body->SetTransform(newPos, fallingObj->startAngle);
+                        fallingObj->body->SetLinearVelocity(b2Vec2_zero);
+                        fallingObj->body->SetAngularVelocity(0.f);
+
+                        // 2) Make sure it collides with ground
+                        if (b2Fixture* f = fallingObj->body->GetFixtureList())
+                        {
+                            b2Filter filter = f->GetFilterData();
+                            filter.maskBits |= CATEGORY_GROUND;
+                            f->SetFilterData(filter);
+                        }
+
+                        // 3) Turn into dynamic so it FALLS
+                        fallingObj->body->SetType(b2_dynamicBody);
+                        fallingObj->body->SetAwake(true);
+
+                        // 4) Remember that we already dropped it
+                        m_poopDropped = true;
                     }
-                    fallingObj->body->SetType(b2_dynamicBody);
-                    fallingObj->body->SetAwake(true); // wake to ensure falling
                 }
             }
+
             else if (obj.textureIndex == 6)
             {
                 // Player hits index 6 -> trigger game over (Game handles reset)
@@ -274,9 +467,11 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
             if (IsTouchingGround(fallingObj->body, CATEGORY_GROUND))
             {
                 resetObstacle(*fallingObj);
+                m_poopDropped = false; // allow future drops again
             }
         }
     }
+
 }
 
 int World::findObstacleByTextureSubstring(const std::string& substr) const
@@ -308,8 +503,29 @@ void World::draw(sf::RenderWindow& window)
     drawParallaxBackground(window);
 
     // Draw obstacles behind player if needed
-    for (auto& obj : obstacles)
+    for (auto& obj : obstacles) 
+    {
+
+        if (obj.textureIndex == 3) // sewer cap
+            continue;
+        if (obj.textureIndex == 7) // bird
+            continue;
+        if (obj.textureIndex == 6 && !m_poopDropped)
+            continue;  // 💩 don't draw poop before it drops
+
+       
+
         window.draw(obj.shape);
+
+    }
+    // Draw the sewer cap sprite (static at first, animated after collision)
+    window.draw(m_sewersSprite);
+    // 🐦 Bird sprite
+    window.draw(m_birdSprite);
+
+
+
+
 
     // Player will be drawn in Game::render after this
 
