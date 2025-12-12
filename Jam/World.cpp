@@ -13,7 +13,7 @@ World::World(b2World& worldRef)
 
     // Create ALL obstacles here (from the second / latest version)
     createObstacle(400, 568 + 210, true, 170, 190, "Assets/Obstacles/Untitled-2.png");   //0
-    createObstacle(1260, 470 + 210, false, 450, 400, "Assets/Obstacles/foull car.png");    //1
+    createObstacle(1000, 470 + 235, false, 300, 200, "Assets/Obstacles/foull car.png");    //1
 
     createObstacle(1800, 620 + 235, false, 180, 30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
 
@@ -28,12 +28,12 @@ World::World(b2World& worldRef)
 
     //bird
     createObstacle(4800, 0 + 210, false, 150, 100, "Assets/Obstacles/Bird1.png"); //7
-    createObstacle(4700, 600 + 210, false, 600, 100, "Assets/Obstacles/Untitled-2.png"); //8
+    createObstacle(4700, 600 + 210, false, 600, 100, "Assets/Obstacles/Untitled-3.png"); //8
 
     createObstacle(6000, 640 + 170, false, 220, 220, "Assets/Obstacles/doggie.png"); //9
 
     createObstacle(7200, -100 + 210, false, 250, 150, "Assets/Obstacles/man falling.png"); //10
-    createObstacle(7200, 600 + 210, false, 400, 100, "Assets/Obstacles/Untitled-2.png"); //11
+    createObstacle(7200, 600 + 210, false, 400, 100, "Assets/Obstacles/Untitled-3.png"); //11
 
 
     createObstacle(630, 580 + 210, true, 150, 160, "Assets/Obstacles/trash.png");   //12
@@ -374,10 +374,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
                     m_sewersSprite.setPosition(m_sewersBasePos); // start from base
                 }
             }
-            else if (obj.textureIndex == 5)
-            {
-                obj.shape.setFillColor(sf::Color::Magenta);
-            }
+            
             else if (obj.textureIndex == 7)
             {
                 obj.body->SetType(b2_dynamicBody);
@@ -443,6 +440,11 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
                     fallingObj->body->SetType(b2_dynamicBody);
                     fallingObj->body->SetAwake(true);
                 }
+            }
+
+            else if (obj.textureIndex == 10)
+            {
+                mGameOverTriggered = true;
             }
         }
         else
