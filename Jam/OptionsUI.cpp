@@ -19,9 +19,9 @@ struct Slider {
 static void InitSlider(Slider& s, const std::string& label, float initial, float y, const sf::Font& font, const sf::VideoMode& desktop, std::function<void(float)> apply) {
  s.label = label;
  s.value = std::clamp(initial,0.f,1.f);
- s.x =60.f;
+ s.x = desktop.width/2-500;
  s.y = y;
- s.width = desktop.width -120.f;
+ s.width = desktop.width -1000.f;
  s.height =10.f;
  s.knobRadius =18.f;
  s.apply = apply;
@@ -32,7 +32,7 @@ static void InitSlider(Slider& s, const std::string& label, float initial, float
 
  s.valueText = sf::Text("", font,32);
  s.valueText.setFillColor(sf::Color(200,200,200));
- s.valueText.setPosition(s.x, y -20.f);
+ s.valueText.setPosition((desktop.width / 2) - 570, y - 20.f);
 
  s.bar = sf::RectangleShape(sf::Vector2f(s.width, s.height));
  s.bar.setPosition(s.x, s.y);
@@ -91,11 +91,12 @@ void Show(AudioManager& audio, const sf::Font& font, MainMenu* menu) {
  Slider s; InitSlider(s, label, initial, y, font, desktop, apply); UpdateSliderUI(s, s.value); sliders.push_back(s);
  };
 
- addSlider("Master",1.0f, desktop.height *0.55f, [&](float v) { audio.SetMasterVolume(v); });
- addSlider("Music",0.9f, desktop.height *0.62f, [&](float v) { audio.SetMusicVolume(v); });
- addSlider("Background",0.6f, desktop.height *0.69f, [&](float v) { audio.SetBackgroundVolume(v); });
- addSlider("Dialogue",1.0f, desktop.height *0.76f, [&](float v) { audio.SetDialogueVolume(v); });
- addSlider("Effects",1.0f, desktop.height *0.83f, [&](float v) { audio.SetEffectsVolume(v); });
+ // Initialize from current audio state instead of hardcoded defaults
+ addSlider("Master", audio.GetMasterVolume(), desktop.height *0.55f, [&](float v) { audio.SetMasterVolume(v); });
+ addSlider("Music", audio.GetMusicVolume(), desktop.height *0.62f, [&](float v) { audio.SetMusicVolume(v); });
+ addSlider("Background", audio.GetBackgroundVolume(), desktop.height *0.69f, [&](float v) { audio.SetBackgroundVolume(v); });
+ addSlider("Dialogue", audio.GetDialogueVolume(), desktop.height *0.76f, [&](float v) { audio.SetDialogueVolume(v); });
+ addSlider("Effects", audio.GetEffectsVolume(), desktop.height *0.83f, [&](float v) { audio.SetEffectsVolume(v); });
 
  bool exiting = false;
  sf::Clock exitClock;

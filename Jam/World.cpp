@@ -24,7 +24,7 @@ World::World(b2World& worldRef)
 
     createObstacle(3800, 600 + 170, false, 250 * 1.1f, 170 * 1.2f, "Assets/Obstacles/grocery.png"); //5
 
-    createObstacle(4825, 0 + 210, false, 120, 80, "Assets/Obstacles/the shit.png"); //6
+    createObstacle(4825, 0 + 210, false, 75/3, 200/3, "Assets/Obstacles/the shit.png"); //6
 
     //bird
     createObstacle(4800, 0 + 210, false, 150, 100, "Assets/Obstacles/Bird1.png"); //7
@@ -45,13 +45,10 @@ World::World(b2World& worldRef)
     createObstacle(-470, 510 + 210, true, 440, 240, "Assets/Obstacles/bus.png");   
     createObstacle(-640, 560 + 210, true, 130, 130, "Assets/Obstacles/trash.png");   
 
-
-
-
-
-
-
-
+    // Load doggie angry texture (optional, non-fatal)
+    if (!m_doggieAngryTexture.loadFromFile("Assets/Obstacles/doggieangry.png")) {
+        std::cerr << "Warning: failed to load doggieangry.png (optional)\n";
+    }
 
     // Sewers cap animation setup (textureIndex == 3)
     std::vector<std::string> sewerFrames = {
@@ -341,7 +338,7 @@ static bool IsTouchingGround(b2Body* body, uint16 groundCategoryBits)
     }
     return false;
 }
-void World::checkCollision(const sf::RectangleShape& playerShape)
+void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCalm)
 {
     sf::FloatRect playerBounds = playerShape.getGlobalBounds();
     mIsColliding = false;
@@ -391,17 +388,20 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
                     Obstacle* fallingObj = getObstacleByTexture(6); // "the shit" obstacle
                     if (fallingObj && fallingObj->body)
                     {
-                        // 1) Place poop under the bird (X from bird, Y from its start height)
+                        // 1) Place poop at the bird's current position (spawn exactly at bird)
                         sf::Vector2f birdPos = m_birdSprite.getPosition();
 
+                        // If you want a small offset below the bird, change offsetYPx (positive = lower on screen)
+                        const float offsetYpx = 0.f;
                         b2Vec2 newPos(
                             birdPos.x * INV_PPM,
-                            fallingObj->startPosB2.y      // keep original Y starting height
+                            (birdPos.y + offsetYpx) * INV_PPM
                         );
                         fallingObj->body->SetTransform(newPos, fallingObj->startAngle);
                         fallingObj->body->SetLinearVelocity(b2Vec2_zero);
                         fallingObj->body->SetAngularVelocity(0.f);
-
+                        fallingObj->startPosB2 = fallingObj->body->GetPosition();
+                        fallingObj->shape.setPosition(fallingObj->startPosB2.x * PPM, fallingObj->startPosB2.y * PPM);
                         // 2) Make sure it collides with ground
                         if (b2Fixture* f = fallingObj->body->GetFixtureList())
                         {
@@ -445,6 +445,27 @@ void World::checkCollision(const sf::RectangleShape& playerShape)
             else if (obj.textureIndex == 10)
             {
                 mGameOverTriggered = true;
+            }
+
+            // DOGGIE angry swap: index 9 -> if player is colliding and playerCalm (walking/idle) then use angry texture
+            if (obj.textureIndex == 9)
+            {
+                if (playerCalm && m_doggieAngryTexture.getSize().x > 0)
+                {
+                    obj.shape.setTexture(&m_doggieAngryTexture);
+                    sf::Vector2u ts = m_doggieAngryTexture.getSize();
+                    obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(ts.x), static_cast<int>(ts.y)));
+                }
+                else
+                {
+                    // restore original texture if available
+                    if (obj.textureIndex >= 0 && obj.textureIndex < obstacleTextures.size()) {
+                        sf::Texture& tex = obstacleTextures[obj.textureIndex];
+                        obj.shape.setTexture(&tex);
+                        sf::Vector2u texSize = tex.getSize();
+                        obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
+                    }
+                }
             }
         }
         else

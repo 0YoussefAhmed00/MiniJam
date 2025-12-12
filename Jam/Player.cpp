@@ -9,7 +9,7 @@ using namespace sf;
 using namespace std;
 
 // ------------------------------------------------------------
-//  FIXTURE REBUILD (unchanged)
+//  FIXTURE REBUILD (adjusted: keep bottom aligned, trim only top)
 // ------------------------------------------------------------
 static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture, const sf::Sprite& sprite)
 {
@@ -23,14 +23,29 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     const float halfWidthPx = gb.width * 0.5f;
     const float halfHeightPx = gb.height * 0.5f;
 
-    constexpr float COLLISION_WIDTH_SCALE = 0.45f;
-    constexpr float COLLISION_HEIGHT_SCALE = 0.9f;
+    // User-tunable constants
+    constexpr float COLLISION_WIDTH_SCALE = 0.40f;   // "half W"
+    constexpr float COLLISION_HEIGHT_SCALE = 0.80f;  // baseline height scaling
+    constexpr float TOP_TRIM_PX = 15.f;               // pixels trimmed from the top only
 
+    // Compute desired full height (apply baseline scale, then remove top trim)
+    const float fullHeightPx = gb.height * COLLISION_HEIGHT_SCALE;
+    const float newFullHeightPx = std::max(8.f, fullHeightPx - TOP_TRIM_PX); // clamp to avoid degenerate box
     const float bodyHalfWidthPx = halfWidthPx * COLLISION_WIDTH_SCALE;
-    const float bodyHalfHeightPx = halfHeightPx * COLLISION_HEIGHT_SCALE;
+    const float bodyHalfHeightPx = newFullHeightPx * 0.5f;
+
+    // Shift the box down so the bottom matches the original sprite bottom:
+    // original bottom (relative to center) = +halfHeightPx
+    // new bottom = centerOffsetY + bodyHalfHeightPx  => set equal to halfHeightPx
+    const float centerOffsetYPx = halfHeightPx - bodyHalfHeightPx;
 
     b2PolygonShape dynamicBox;
-    dynamicBox.SetAsBox(bodyHalfWidthPx * Units::INV_PPM, bodyHalfHeightPx * Units::INV_PPM);
+    dynamicBox.SetAsBox(
+        bodyHalfWidthPx * Units::INV_PPM,
+        bodyHalfHeightPx * Units::INV_PPM,
+        b2Vec2(0.f, centerOffsetYPx * Units::INV_PPM),
+        0.f
+    );
 
     b2FixtureDef boxFixture;
     boxFixture.shape = &dynamicBox;
@@ -39,6 +54,7 @@ static void CreateFixturesFromSpriteBounds(b2Body* body, b2Fixture*& footFixture
     boxFixture.filter.categoryBits = 0x0001;
     body->CreateFixture(&boxFixture);
 
+    // Keep foot sensor / bottom detection unchanged
     const float footHalfWidthPx = std::max(4.f, (gb.width - 6.f) * 0.5f);
     const float footHalfHeightPx = std::max(2.f, gb.height * 0.04f);
     const float footOffsetYPx = halfHeightPx;
@@ -158,7 +174,8 @@ Player::Player(b2World* world, float startX, float startY)
     // Ensure no tint is applied; use sprite’s original texture colors
     m_sprite.setColor(sf::Color::White);
 
-    CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
+    const sf::FloatRect idleBounds = m_sprite.getGlobalBounds();
+    CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite); // uses idle texture now
     SyncGraphics();
 }
 
@@ -241,7 +258,7 @@ void Player::Update(float dt, bool grounded)
         if (desired == "Jump" || desired == "AngryJump")
             m_anim.Reset();
 
-        CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
+       // CreateFixturesFromSpriteBounds(m_body, m_footFixture, m_sprite);
     }
 
     

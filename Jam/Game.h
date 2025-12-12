@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
 #include <memory>
+#include <unordered_map>
 #include "Units.h"
 #include "AudioManager.h"
 #include "Player.h"
@@ -44,8 +45,8 @@ private:
     sf::View m_defaultView;
 
     // Game.h (inside class Game private section)
-    float m_transitionStartRotation = 0.f;
-    float m_transitionTargetRotation = 0.f;
+    float m_transitionStartRotation =0.f;
+    float m_transitionTargetRotation =0.f;
 
 
     // Physics
@@ -75,15 +76,15 @@ private:
     //Grocery Man Variables
     // Grocery audio
     int m_groceryObstacleIndex = -1;
-    std::shared_ptr<AudioEmitter> m_groceryA;          // ambient line A
-    std::shared_ptr<AudioEmitter> m_groceryB;          // ambient line B
-    std::shared_ptr<AudioEmitter> m_groceryCollision;  // collision/callout line
+    std::shared_ptr<AudioEmitter> m_groceryA; // ambient line A
+    std::shared_ptr<AudioEmitter> m_groceryB; // ambient line B
+    std::shared_ptr<AudioEmitter> m_groceryCollision; // collision/callout line
     std::shared_ptr<AudioEmitter> m_playerReply; // add as a private member of Game
-    bool m_groceryCollisionPlayed = false;      // already used, but ensure it's declared as a member
+    bool m_groceryCollisionPlayed = false; // already used, but ensure it's declared as a member
     bool m_groceryWaitingPlayerReply = false;
 
     sf::Clock m_groceryClock;
-    float m_nextGroceryLineTime = 0.f;
+    float m_nextGroceryLineTime =0.f;
     bool m_lastGroceryColliding = false;
 
 
@@ -104,14 +105,14 @@ private:
     bool inTransition;
     bool pendingEnable;
     sf::Clock transitionClock;
-    static constexpr float TRANSITION_TIME = 0.25f;
-    static constexpr float PSYCHO_SHAKE_MAG = 4.f;
-    static constexpr float TRANSITION_SHAKE_MAG = 20.f;
+    static constexpr float TRANSITION_TIME =0.25f;
+    static constexpr float PSYCHO_SHAKE_MAG =4.f;
+    static constexpr float TRANSITION_SHAKE_MAG =20.f;
 
     bool inputLocked;
     bool inputLockPending;
     sf::Clock inputLockClock;
-    static constexpr float INPUT_LOCK_DURATION = 2.f;
+    static constexpr float INPUT_LOCK_DURATION =2.f;
     float nextInputLockCheck;
 
     // Debug text / UI
@@ -120,6 +121,13 @@ private:
 
     // Main Menu
     std::unique_ptr<MainMenu> m_mainMenu;
+
+    // Pause UI
+    bool m_paused{ false };
+    std::unique_ptr<MenuButton> m_pauseResumeButton;
+    std::unique_ptr<MenuButton> m_pauseBackButton;
+    sf::RectangleShape m_pauseOverlay;
+    std::unordered_map<std::string, sf::Sound::Status> m_emitterPrevStatus;
 
     // Frame clock
     sf::Clock m_frameClock;
@@ -130,8 +138,8 @@ private:
     PlayerAudioState m_lastAppliedAudioState = PlayerAudioState::Neutral;
 
     sf::Clock m_groceryCooldownClock;
-    float     m_groceryCooldownDuration = 4.f; // seconds
-    bool      m_groceryCooldownActive = false;
+    float m_groceryCooldownDuration =4.f; // seconds
+    bool m_groceryCooldownActive = false;
 };
 
 #endif // GAME_H
