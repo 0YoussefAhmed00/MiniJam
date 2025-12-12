@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 #include <SFML/Graphics.hpp>
 #include <box2d/box2d.h>
 #include <vector>
 #include <string>
+#include "Animation.h" 
 
 class World
 {
@@ -10,10 +11,10 @@ public:
     World(b2World& worldRef);
 
     // Collision categories
-    static constexpr uint16 CATEGORY_PLAYER   = 0x0001;
-    static constexpr uint16 CATEGORY_GROUND   = 0x0002;
+    static constexpr uint16 CATEGORY_PLAYER = 0x0001;
+    static constexpr uint16 CATEGORY_GROUND = 0x0002;
     static constexpr uint16 CATEGORY_OBSTACLE = 0x0004;
-    static constexpr uint16 CATEGORY_SENSOR   = 0x0008;
+    static constexpr uint16 CATEGORY_SENSOR = 0x0008;
 
     struct ParallaxLayer {
         sf::Texture texture;
@@ -32,14 +33,15 @@ public:
         size_t textureIndex;
 
         // New: initial state to allow resets
-        b2Vec2       startPosB2       {0.f, 0.f};
-        float        startAngle       = 0.f;
-        b2BodyType   startType        = b2_staticBody;
+        b2Vec2       startPosB2{ 0.f, 0.f };
+        float        startAngle = 0.f;
+        b2BodyType   startType = b2_staticBody;
         uint16       initialCategoryBits = 0;
-        uint16       initialMaskBits     = 0;
+        uint16       initialMaskBits = 0;
 
         Obstacle(b2Body* b, const sf::RectangleShape& s, bool og, size_t texIdx)
-            : body(b), shape(s), onlyGround(og), textureIndex(texIdx) {}
+            : body(b), shape(s), onlyGround(og), textureIndex(texIdx) {
+        }
     };
 
     // ---------------------------------------------------------------------
@@ -66,6 +68,7 @@ public:
     // New: Reset the whole world (obstacles, flags)
     void ResetWorld();
 
+
 private:
     b2World& physicsWorld;
 
@@ -81,6 +84,26 @@ private:
     std::vector<sf::Texture> obstacleTextures;
     std::vector<std::string> obstacleTextureFiles;
 
+    // 🟡 Sewer-cap animation
+    Animation   m_sewersAnim;
+    sf::Sprite  m_sewersSprite;
+    bool        m_sewersPlaying = false;
+
+    int         m_sewersLastFrame = -1;
+    sf::Vector2f m_sewersBasePos;   // where the cap starts before moving
+
+
+    // 🐦 Bird animation
+    Animation   m_birdAnim;
+    sf::Sprite  m_birdSprite;
+    bool        m_birdGoingRight = true;
+    float       m_birdSpeed = 150.f;   // pixels per second
+    float       m_birdMinX = 5000.f;  // left limit
+    float       m_birdMaxX = 5600.f;  // right limit
+    sf::Vector2f m_birdStartPos;           // starting position
+    bool m_poopDropped = false;
+
+  
     // Collision debug info
     bool mIsColliding = false;
     int  lastCollidedObstacleIndex = -1;
