@@ -522,7 +522,7 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 
 	// Camera & audio state
 	m_camera.setRotation(0.f);
-	m_lastAppliedAudioState = PlayerAudioState::Neutral;
+	m_lastAppliedAudioState = PlayerAudioState::Neutral; // ensure music logic matches player state
 	if (m_worldView)
 		m_worldView->ResetWorld();
 	// Reset player audio & visuals
@@ -535,8 +535,8 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 			b2Body* body = m_player->GetBody();
 			if (body) {
 				// use the same start position you used when creating the player
-				body->SetTransform(b2Vec2(140.f * INV_PPM, 800.f * INV_PPM), 0.f);
-				body->SetLinearVelocity(b2Vec2(0.f, 0.f));
+				body->SetTransform(b2Vec2(140.f * INV_PPM,800.f * INV_PPM),0.f);
+				body->SetLinearVelocity(b2Vec2(0.f,0.f));
 				body->SetAngularVelocity(0.f);
 			}
 			// If your Player class has additional internal state (health, anim state),
@@ -547,7 +547,7 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 			// If not resetting position, still ensure velocities are zeroed
 			b2Body* body = m_player->GetBody();
 			if (body) {
-				body->SetLinearVelocity(b2Vec2(0.f, 0.f));
+				body->SetLinearVelocity(b2Vec2(0.f,0.f));
 				body->SetAngularVelocity(0.f);
 			}
 		}
@@ -971,19 +971,27 @@ void Game::update(float dt)
 			m_disableInputDuringGameOver = true;
 			m_gameOverClock.restart();
 
-			// Stop music & emitters so the scene is quiet while counting down
-			m_audio.StopMusic();
-			if (m_dialogueEmitter && m_dialogueEmitter->buffer) m_dialogueEmitter->sound.stop();
-			if (m_effectEmitter && m_effectEmitter->buffer) m_effectEmitter->sound.stop();
-			if (m_playerReply && m_playerReply->buffer) m_playerReply->sound.stop();
-			for (auto& kv : m_playerEmitters) {
-				if (kv.second && kv.second->buffer) kv.second->sound.stop();
-			}
+			// Ensure player goes back to normal immediately when losing
+ 			psychoMode = false;
+ 			if (m_player) {
+ 				m_player->SetAudioState(PlayerAudioState::Neutral);
+ 				m_player->SetColor(sf::Color::Red);
+ 			}
+ 			m_lastAppliedAudioState = PlayerAudioState::Neutral;
 
-			// Prepare the "YOU LOSE" text
-			m_gameOverText.setString("YOU LOSE");
-			sf::FloatRect tb = m_gameOverText.getLocalBounds();
-			m_gameOverText.setOrigin(tb.left + tb.width * 0.5f, tb.top + tb.height * 0.5f);
+ 			// Stop music & emitters so the scene is quiet while counting down
+ 			m_audio.StopMusic();
+ 			if (m_dialogueEmitter && m_dialogueEmitter->buffer) m_dialogueEmitter->sound.stop();
+ 			if (m_effectEmitter && m_effectEmitter->buffer) m_effectEmitter->sound.stop();
+ 			if (m_playerReply && m_playerReply->buffer) m_playerReply->sound.stop();
+ 			for (auto& kv : m_playerEmitters) {
+ 				if (kv.second && kv.second->buffer) kv.second->sound.stop();
+ 			}
+
+ 			// Prepare the "YOU LOSE" text
+ 			m_gameOverText.setString("YOU LOSE");
+ 			sf::FloatRect tb = m_gameOverText.getLocalBounds();
+ 			m_gameOverText.setOrigin(tb.left + tb.width *0.5f, tb.top + tb.height *0.5f);
 		}
 
 		// If we're currently in countdown, handle timing (do not let game world progress)

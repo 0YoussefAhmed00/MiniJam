@@ -84,6 +84,15 @@ namespace OptionsUI {
 			imgBounds.top - moveText.getGlobalBounds().height - 10.f
 		);
 
+		// Hint text under the Movement Controls heading
+		sf::Text hintText("Press Shift to walk quietly", font, 28);
+		hintText.setFillColor(sf::Color(200, 200, 200));
+		// center under the heading
+		hintText.setPosition(
+			imgBounds.left + imgBounds.width * 0.5f - hintText.getGlobalBounds().width * 0.5f,
+			moveText.getPosition().y + moveText.getGlobalBounds().height + 20.f
+		);
+
 		std::vector<Slider> sliders;
 		sliders.reserve(5);
 
@@ -148,6 +157,7 @@ namespace OptionsUI {
 			}
 			opts.clear(sf::Color(30, 30, 40));
 			opts.draw(moveText);
+			opts.draw(hintText);
 			opts.draw(controlsSprite);
 			for (auto& s : sliders) {
 				opts.draw(s.labelText);
