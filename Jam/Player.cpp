@@ -318,7 +318,7 @@ void Player::PlayWin()
 
  // Add the clip (if not present already)
  if (m_anim.CurrentClip() != "Win") {
- m_anim.AddClip("Win", winPaths,0.06f, true); // <-- NOW LOOPING
+ m_anim.AddClip("Win", winPaths,0.20f, true); // <-- NOW LOOPING
  }
 
  m_playingWin = true;
