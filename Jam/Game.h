@@ -147,6 +147,8 @@ private:
     sf::Text m_gameOverText;
     bool m_disableInputDuringGameOver = false;    // prevents handling input while counting down
 
+    // NEW: win countdown state
+    bool m_win = false; // true while win-countdown active
 
     // Debug text / UI
     sf::Font m_font;

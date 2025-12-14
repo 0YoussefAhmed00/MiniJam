@@ -10,15 +10,15 @@
 
 using namespace sf;
 
-constexpr float PPM = 30.f;
-constexpr float INV_PPM = 1.f / PPM;
+constexpr float PPM =30.f;
+constexpr float INV_PPM =1.f / PPM;
 std::unordered_map<std::string, std::shared_ptr<AudioEmitter>> m_playerEmitters;
 
 static float randomFloat(float min, float max) {
 	return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
 }
 static float randomOffset(float magnitude) {
-	return ((rand() % 2000) / 1000.f - 1.f) * magnitude;
+	return ((rand() %2000) /1000.f -1.f) * magnitude;
 }
 
 void Game::MyContactListener::BeginContact(b2Contact* contact) {
@@ -32,7 +32,7 @@ void Game::MyContactListener::EndContact(b2Contact* contact) {
 	b2Fixture* b = contact->GetFixtureB();
 	if (a == footFixture && !b->IsSensor()) footContacts--;
 	if (b == footFixture && !a->IsSensor()) footContacts--;
-	if (footContacts < 0) footContacts = 0;
+	if (footContacts <0) footContacts =0;
 }
 
 
@@ -42,11 +42,11 @@ Game::Game()
 	: m_window(VideoMode::getDesktopMode(),
 		"SFML + Box2D + AudioManager + Persona Demo",
 		Style::Fullscreen),
-	m_camera(FloatRect(0, 0,
+	m_camera(FloatRect(0,0,
 		1920,
 		1080)),
 	m_defaultView(m_window.getDefaultView()),
-	m_gravity(0.f, 20.f),
+	m_gravity(0.f,20.f),
 	m_world(m_gravity),
 	m_player(nullptr),
 	m_diagMark(8.f),
@@ -76,11 +76,11 @@ Game::Game()
 	// Ground (Box2D)
 	b2BodyDef groundDef;
 	groundDef.type = b2_staticBody;
-	groundDef.position.Set(640 * INV_PPM, 880 * INV_PPM);
+	groundDef.position.Set(640 * INV_PPM,880 * INV_PPM);
 	b2Body* ground = m_world.CreateBody(&groundDef);
 
 	b2PolygonShape groundBox;
-	groundBox.SetAsBox(2000.0f * 10 * INV_PPM, 10.0f * INV_PPM);
+	groundBox.SetAsBox(2000.0f *10 * INV_PPM,10.0f * INV_PPM);
 
 	b2FixtureDef groundFix;
 	groundFix.shape = &groundBox;
@@ -89,40 +89,40 @@ Game::Game()
 	ground->CreateFixture(&groundFix);
 
 	// Player
-	m_player = std::make_unique<Player>(&m_world, 140.f, 800.f);
+	m_player = std::make_unique<Player>(&m_world,140.f,800.f);
 	m_contactListener.footFixture = m_player->GetFootFixture();
 
 	// Audio setup
 	m_diagMark.setFillColor(Color::Yellow);
-	m_diagMark.setOrigin(8.f, 8.f);
+	m_diagMark.setOrigin(8.f,8.f);
 	m_fxMark.setFillColor(Color::Cyan);
-	m_fxMark.setOrigin(8.f, 8.f);
+	m_fxMark.setOrigin(8.f,8.f);
 
 	m_dialogueEmitter = std::make_shared<AudioEmitter>();
 	m_dialogueEmitter->id = "dialogue1";
 	m_dialogueEmitter->category = AudioCategory::Dialogue;
-	m_dialogueEmitter->position = b2Vec2((640 - 100) * INV_PPM, (680 - 50) * INV_PPM);
-	m_dialogueEmitter->minDistance = 0.5f;
-	m_dialogueEmitter->maxDistance = 20.f;
-	m_dialogueEmitter->baseVolume = 1.f;
+	m_dialogueEmitter->position = b2Vec2((640 -100) * INV_PPM, (680 -50) * INV_PPM);
+	m_dialogueEmitter->minDistance =0.5f;
+	m_dialogueEmitter->maxDistance =20.f;
+	m_dialogueEmitter->baseVolume =1.f;
 
 	m_effectEmitter = std::make_shared<AudioEmitter>();
 	m_effectEmitter->id = "effect1";
 	m_effectEmitter->category = AudioCategory::Effects;
-	m_effectEmitter->position = b2Vec2((640 + 100) * INV_PPM, (680 - 50) * INV_PPM);
-	m_effectEmitter->minDistance = 0.5f;
-	m_effectEmitter->maxDistance = 20.f;
-	m_effectEmitter->baseVolume = 1.f;
+	m_effectEmitter->position = b2Vec2((640 +100) * INV_PPM, (680 -50) * INV_PPM);
+	m_effectEmitter->minDistance =0.5f;
+	m_effectEmitter->maxDistance =20.f;
+	m_effectEmitter->baseVolume =1.f;
 
 
 	// player reply emitter (just like refuse)
 	m_playerReply = std::make_shared<AudioEmitter>();
 	m_playerReply->id = "playerReply";
 	m_playerReply->category = AudioCategory::Dialogue;
-	m_playerReply->minDistance = 0.5f;
-	m_playerReply->maxDistance = 20.f;
-	m_playerReply->baseVolume = 1.f;
-	m_playerReply->position = b2Vec2(0.f, 0.f); // optional: track player position if you want
+	m_playerReply->minDistance =0.5f;
+	m_playerReply->maxDistance =20.f;
+	m_playerReply->baseVolume =1.f;
+	m_playerReply->position = b2Vec2(0.f,0.f); // optional: track player position if you want
 	if (!m_playerReply->loadBuffer("assets/Audio/player_reply.wav")) {
 		std::cerr << "Warning: player reply audio not loaded\n";
 	}
@@ -132,15 +132,15 @@ Game::Game()
 	// find the grocery obstacle by filename substring (change "grocery" to match your filename)
 	m_groceryObstacleIndex = m_worldView->findObstacleByTextureSubstring("grocery");
 
-	if (m_groceryObstacleIndex >= 0)
+	if (m_groceryObstacleIndex >=0)
 	{
 		auto makeGroceryEmitter = [&](const std::string& id, const std::string& filePath)->std::shared_ptr<AudioEmitter> {
 			auto e = std::make_shared<AudioEmitter>();
 			e->id = id;
 			e->category = AudioCategory::Dialogue; // grocery is dialogue-like
-			e->minDistance = 0.5f;
-			e->maxDistance = 50.f;
-			e->baseVolume = 1.f;
+			e->minDistance =0.5f;
+			e->maxDistance =50.f;
+			e->baseVolume =1.f;
 			// initial position (will be updated each frame in update())
 			b2Vec2 p = m_worldView->getObstacleBodyPosition(m_groceryObstacleIndex);
 			e->position = p;
@@ -152,13 +152,13 @@ Game::Game()
 			return e;
 			};
 
-		// filenames — create these WAV/OGG files in your assets folder
+		// filenames ? create these WAV/OGG files in your assets folder
 		m_groceryA = makeGroceryEmitter("groceryA", "assets/Audio/grocery_line1.wav");
 		m_groceryB = makeGroceryEmitter("groceryB", "assets/Audio/grocery_line2.wav");
 		m_groceryCollision = makeGroceryEmitter("groceryCollision", "assets/Audio/grocery_collision.wav");
 
 		m_groceryClock.restart();
-		m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+		m_nextGroceryLineTime = randomFloat(5.f,10.f);
 	}
 
 	// --- Bus visual + audio setup ---
@@ -166,17 +166,17 @@ Game::Game()
 		std::cerr << "Warning: bus texture not loaded (Assets/Obstacles/bus.png)\n";
 	}
 	m_busSpawnClock.restart();
-	m_busTravelTime = 3.5f;         // enforce 2 seconds travel
-	m_busSpawnInterval = 16.f;     // 30 seconds between spawns
+	m_busTravelTime =3.5f; // enforce2 seconds travel
+	m_busSpawnInterval =16.f; //30 seconds between spawns
 
 	// Create/register a single bus emitter (reused for each pass).
 	m_busEmitter = std::make_shared<AudioEmitter>();
 	m_busEmitter->id = "bus_pass";
 	m_busEmitter->category = AudioCategory::Dialogue; // or Dialogue depending on your mixer
-	m_busEmitter->minDistance = 0.5f;
-	m_busEmitter->maxDistance = 50.f;
-	m_busEmitter->baseVolume = 1.f;
-	m_busEmitter->position = b2Vec2(0.f, 0.f);
+	m_busEmitter->minDistance =0.5f;
+	m_busEmitter->maxDistance =50.f;
+	m_busEmitter->baseVolume =1.f;
+	m_busEmitter->position = b2Vec2(0.f,0.f);
 	if (!m_busEmitter->loadBuffer(m_busAudioPath)) {
 		std::cerr << "Warning: bus pass audio not loaded: " << m_busAudioPath << "\n";
 	}
@@ -211,9 +211,9 @@ Game::Game()
 		emitter->id = id;
 		emitter->category = AudioCategory::Dialogue; // <-- make it dialogue so dialogue volume affects it
 		emitter->position = m_player->GetBody()->GetPosition();
-		emitter->minDistance = 0.5f;
-		emitter->maxDistance = 20.f;
-		emitter->baseVolume = 1.f;
+		emitter->minDistance =0.5f;
+		emitter->maxDistance =20.f;
+		emitter->baseVolume =1.f;
 
 		if (!emitter->loadBuffer(filePath))
 			std::cerr << "Warning: " << filePath << " not loaded.\n";
@@ -237,13 +237,13 @@ Game::Game()
 	//createPlayerEmitter("attack", "assets/Audio/attack.wav");
 	//// Add more player sounds as needed
 
-	nextPsychoSwitch = randomFloat(6.f, 8.f);
+	nextPsychoSwitch = randomFloat(6.f,8.f);
 	psychoClock.restart();
 
-	nextSplitCheck = randomFloat(1.f, 3.f);
+	nextSplitCheck = randomFloat(1.f,3.f);
 	splitClock.restart();
 
-	nextInputLockCheck = randomFloat(3.f, 6.f);
+	nextInputLockCheck = randomFloat(3.f,6.f);
 	inputLockClock.restart();
 
 	if (!m_font.loadFromFile("assets/Font/Myriad Arabic Regular.ttf")) {
@@ -252,7 +252,7 @@ Game::Game()
 	m_debugText.setFont(m_font);
 	m_debugText.setCharacterSize(16);
 	m_debugText.setFillColor(Color::White);
-	m_debugText.setPosition(10.f, 10.f);
+	m_debugText.setPosition(10.f,10.f);
 
 	m_mainMenu = std::make_unique<MainMenu>(m_window.getSize());
 	m_mainMenu->SetFont(&m_font);
@@ -260,11 +260,11 @@ Game::Game()
 
 	// Pause UI init
 	m_pauseOverlay.setSize(Vector2f((float)m_window.getSize().x, (float)m_window.getSize().y));
-	m_pauseOverlay.setFillColor(Color(0, 0, 0, 160));
+	m_pauseOverlay.setFillColor(Color(0,0,0,160));
 
 	// Create simple resume/back buttons using MenuButton style
-	m_pauseResumeButton = std::make_unique<MenuButton>(m_font, "Resume", Vector2f((float)m_window.getSize().x * 0.5f, (float)m_window.getSize().y * 0.45f), Vector2f(360.f, 72.f));
-	m_pauseBackButton = std::make_unique<MenuButton>(m_font, "Back to Menu", Vector2f((float)m_window.getSize().x * 0.5f, (float)m_window.getSize().y * 0.55f), Vector2f(360.f, 72.f));
+	m_pauseResumeButton = std::make_unique<MenuButton>(m_font, "Resume", Vector2f((float)m_window.getSize().x *0.5f, (float)m_window.getSize().y *0.45f), Vector2f(360.f,72.f));
+	m_pauseBackButton = std::make_unique<MenuButton>(m_font, "Back to Menu", Vector2f((float)m_window.getSize().x *0.5f, (float)m_window.getSize().y *0.55f), Vector2f(360.f,72.f));
 
 	m_pauseResumeButton->SetEnabled(true);
 	m_pauseBackButton->SetEnabled(true);
@@ -273,9 +273,9 @@ Game::Game()
 
 	// initialize game-over text
 	m_gameOver = false;
-	m_gameOverDelay = 3.f;
+	m_gameOverDelay =3.f;
 	m_gameOverText.setFont(m_font);
-	m_gameOverText.setCharacterSize(72);           // big text
+	m_gameOverText.setCharacterSize(72); // big text
 	m_gameOverText.setStyle(sf::Text::Bold);
 	m_gameOverText.setFillColor(sf::Color::Red);
 	m_gameOverText.setOutlineThickness(2.f);
@@ -458,42 +458,47 @@ void Game::processEvents()
 					pendingEnable = false;
 					m_camera.setRotation(0.f);
 
-					nextPsychoSwitch = randomFloat(6.f, 8.f);
+					nextPsychoSwitch = randomFloat(6.f,8.f);
 					psychoClock.restart();
 
-					nextSplitCheck = randomFloat(1.f, 3.f);
+					nextSplitCheck = randomFloat(1.f,3.f);
 					splitClock.restart();
 
 					inputLocked = false;
 					inputLockPending = false;
-					nextInputLockCheck = randomFloat(3.f, 6.f);
+					nextInputLockCheck = randomFloat(3.f,6.f);
 					inputLockClock.restart();
+
+					// Reset player's visual/animation state
+					if (m_player) m_player->ResetToIdle();
 				}
 			}
 			continue; // while paused don't process gameplay keys below
 		}
 
 		if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::M) {
-			static bool mToggle = false; mToggle = !mToggle; m_audio.SetMusicVolume(mToggle ? 0.0f : 1.f);
+			static bool mToggle = false; mToggle = !mToggle; m_audio.SetMusicVolume(mToggle ?0.0f :1.f);
 		}
 		if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::B) {
-			static bool bToggle = false; bToggle = !bToggle; m_audio.SetBackgroundVolume(bToggle ? 0.1f : 1.f);
+		 static bool bToggle = false; bToggle = !bToggle; m_audio.SetBackgroundVolume(bToggle ?0.1f :1.f);
 		}
 		if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::P) {
-			psychoMode = !psychoMode;
-			m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
-			m_player->SetAudioState(psychoMode ? PlayerAudioState::Crazy : PlayerAudioState::Neutral);
+			if (!m_win) {
+				psychoMode = !psychoMode;
+				m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
+				m_player->SetAudioState(psychoMode ? PlayerAudioState::Crazy : PlayerAudioState::Neutral);
 
-			splitMode = false;
-			inTransition = false;
-			pendingEnable = false;
-			splitClock.restart();
-			nextSplitCheck = randomFloat(1.f, 3.f);
+				splitMode = false;
+				inTransition = false;
+				pendingEnable = false;
+				splitClock.restart();
+				nextSplitCheck = randomFloat(1.f,3.f);
 
-			inputLocked = false;
-			inputLockPending = false;
-			inputLockClock.restart();
-			nextInputLockCheck = randomFloat(3.f, 6.f);
+				inputLocked = false;
+				inputLockPending = false;
+				inputLockClock.restart();
+				nextInputLockCheck = randomFloat(3.f,6.f);
+			}
 		}
 		if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num1) {
 			if (m_dialogueEmitter->buffer) m_dialogueEmitter->sound.play();
@@ -555,21 +560,21 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 
 	// Reset timers & randomized next-times
 	psychoClock.restart();
-	nextPsychoSwitch = randomFloat(6.f, 8.f);
+	nextPsychoSwitch = randomFloat(6.f,8.f);
 
 	splitClock.restart();
-	nextSplitCheck = randomFloat(1.f, 3.f);
-	splitDuration = 0.f;
+	nextSplitCheck = randomFloat(1.f,3.f);
+	splitDuration =0.f;
 
 	inputLockClock.restart();
-	nextInputLockCheck = randomFloat(3.f, 6.f);
+	nextInputLockCheck = randomFloat(3.f,6.f);
 
 	transitionClock.restart();
-	m_transitionStartRotation = 0.f;
-	m_transitionTargetRotation = 0.f;
+	m_transitionStartRotation =0.f;
+	m_transitionTargetRotation =0.f;
 
 	// Reset player emitters: stop them and set position to player
-	b2Vec2 playerPos = { 0.f,0.f };
+	b2Vec2 playerPos = {0.f,0.f};
 	if (m_player && m_player->GetBody()) playerPos = m_player->GetBody()->GetPosition();
 	for (auto& [id, emitter] : m_playerEmitters) {
 		if (emitter) {
@@ -589,11 +594,11 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 	m_groceryWaitingPlayerReply = false;
 	m_groceryCooldownActive = false;
 	m_groceryClock.restart();
-	m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+	m_nextGroceryLineTime = randomFloat(5.f,10.f);
 	m_groceryCooldownClock.restart();
 
 	// If grocery emitter exists, update its position to match obstacle
-	if (m_groceryObstacleIndex >= 0 && m_worldView) {
+	if (m_groceryObstacleIndex >=0 && m_worldView) {
 		b2Vec2 gpos = m_worldView->getObstacleBodyPosition(m_groceryObstacleIndex);
 		if (m_groceryA) { m_groceryA->sound.stop(); m_groceryA->sound.setPlayingOffset(sf::Time::Zero); m_groceryA->position = gpos; }
 		if (m_groceryB) { m_groceryB->sound.stop(); m_groceryB->sound.setPlayingOffset(sf::Time::Zero); m_groceryB->position = gpos; }
@@ -619,27 +624,27 @@ void Game::SpawnBus()
 	// compute view boundaries (pixels)
 	sf::Vector2f camCenter = m_camera.getCenter();
 	sf::Vector2f viewSize = m_camera.getSize();
-	float leftX = camCenter.x - viewSize.x * 0.5f - m_busSpawnMargin;
-	float rightX = (camCenter.x + viewSize.x * 0.5f + m_busSpawnMargin)+700;
+	float leftX = camCenter.x - viewSize.x *0.5f - m_busSpawnMargin;
+	float rightX = (camCenter.x + viewSize.x *0.5f + m_busSpawnMargin)+700;
 
 	// pick Y relative to player's y (so the bus is near ground/player)
-	sf::Vector2f playerPixel = { 640.f, 540.f }; // fallback center
+	sf::Vector2f playerPixel = {640.f,540.f}; // fallback center
 	if (m_player && m_player->GetBody()) {
 		b2Vec2 p = m_player->GetBody()->GetPosition();
-		playerPixel = { p.x * PPM, p.y * PPM };
+		playerPixel = {p.x * PPM, p.y * PPM};
 	}
-	float busY = 940.f; // a bit below the player; tweak as needed
+	float busY =940.f; // a bit below the player; tweak as needed
 
 	Bus b;
 	b.sprite.setTexture(m_busTexture);
-	b.sprite.setOrigin(m_busTexture.getSize().x * 0.5f, m_busTexture.getSize().y * 0.5f);
+	b.sprite.setOrigin(m_busTexture.getSize().x *0.5f, m_busTexture.getSize().y *0.5f);
 	// optional scaling:
-	b.sprite.setScale(1.5f, 1.5f);
+	b.sprite.setScale(1.5f,1.5f);
 
-	b.startPos = { leftX, busY };
-	b.endPos = { rightX, busY };
+	b.startPos = {leftX, busY};
+	b.endPos = {rightX, busY};
 	b.duration = m_busTravelTime;
-	b.progress = 0.f;
+	b.progress =0.f;
 	b.active = true;
 
 	// Play audio immediately when spawning:
@@ -647,8 +652,8 @@ void Game::SpawnBus()
 	if (m_busEmitter && m_busEmitter->buffer) {
 		// set emitter to spawn position (meters)
 		m_busEmitter->position = b2Vec2(b.startPos.x * INV_PPM, b.startPos.y * INV_PPM);
-		m_busEmitter->sound.stop();   // ensure restart
-		m_busEmitter->sound.play();   // play right away
+		m_busEmitter->sound.stop(); // ensure restart
+		m_busEmitter->sound.play(); // play right away
 	}
 
 	b.sprite.setPosition(b.startPos);
@@ -662,17 +667,17 @@ void Game::update(float dt)
 {
 
 	
-	bool isGrounded = (m_contactListener.footContacts > 0);
+	bool isGrounded = (m_contactListener.footContacts >0);
 
 	if (m_gameOver)
 	{
-		// Prevent real-time input: flag already set when game over started
+		// Prevent real-time input: flag already set when game over or win started
 		m_disableInputDuringGameOver = true;
 
 		// Zero physics velocity immediately to avoid any drift
 		if (m_player && m_player->GetBody()) {
 			b2Body* body = m_player->GetBody();
-			body->SetLinearVelocity(b2Vec2(0.f, 0.f));
+			body->SetLinearVelocity(b2Vec2(0.f,0.f));
 			body->SetAngularVelocity(0.f);
 		}
 
@@ -689,24 +694,37 @@ void Game::update(float dt)
 	}
 
 	// Psycho mode switch
-	if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
-		psychoMode = !psychoMode;
-		m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
-		m_player->SetAudioState(psychoMode ? PlayerAudioState::Crazy : PlayerAudioState::Neutral);
+	if (!m_win) {
+		if (psychoClock.getElapsedTime().asSeconds() >= nextPsychoSwitch) {
+			psychoMode = !psychoMode;
+			m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
+			m_player->SetAudioState(psychoMode ? PlayerAudioState::Crazy : PlayerAudioState::Neutral);
 
-		nextPsychoSwitch = randomFloat(6.f, 12.f);
+			nextPsychoSwitch = randomFloat(6.f,12.f);
+			psychoClock.restart();
+
+			splitMode = false;
+			inTransition = false;
+			pendingEnable = false;
+			splitClock.restart();
+			nextSplitCheck = randomFloat(1.f,3.f);
+
+			inputLocked = false;
+			inputLockPending = false;
+			inputLockClock.restart();
+			nextInputLockCheck = randomFloat(3.f,6.f);
+		}
+	} else {
+		// While in win phase ensure psycho is disabled and reset clock so it doesn't re-enable later
+		if (psychoMode) {
+			psychoMode = false;
+			if (m_player) {
+				m_player->SetColor(Color::Red);
+				m_player->SetAudioState(PlayerAudioState::Neutral);
+			}
+			m_lastAppliedAudioState = PlayerAudioState::Neutral;
+		}
 		psychoClock.restart();
-
-		splitMode = false;
-		inTransition = false;
-		pendingEnable = false;
-		splitClock.restart();
-		nextSplitCheck = randomFloat(1.f, 3.f);
-
-		inputLocked = false;
-		inputLockPending = false;
-		inputLockClock.restart();
-		nextInputLockCheck = randomFloat(3.f, 6.f);
 	}
 
 	static bool refusePlayed = false; // for "refuse" sound once
@@ -726,7 +744,7 @@ void Game::update(float dt)
 		}
 		else if (!inputLocked) {
 			if (elapsedLock >= nextInputLockCheck) {
-				if (rand() % 3 == 0) {
+				if (rand() %3 ==0) {
 					if (isGrounded) {
 						inputLocked = true;
 						inputLockClock.restart();
@@ -738,7 +756,7 @@ void Game::update(float dt)
 				}
 				else {
 					inputLockClock.restart();
-					nextInputLockCheck = randomFloat(3.f, 6.f);
+					nextInputLockCheck = randomFloat(3.f,6.f);
 				}
 			}
 		}
@@ -746,7 +764,7 @@ void Game::update(float dt)
 			if (inputLockClock.getElapsedTime().asSeconds() >= INPUT_LOCK_DURATION) {
 				inputLocked = false;
 				inputLockClock.restart();
-				nextInputLockCheck = randomFloat(3.f, 6.f);
+				nextInputLockCheck = randomFloat(3.f,6.f);
 				m_player->SetColor(psychoMode ? Color::Magenta : Color::Red);
 			}
 		}
@@ -780,18 +798,18 @@ void Game::update(float dt)
 		float elapsedSplit = splitClock.getElapsedTime().asSeconds();
 		if (!splitMode && !inTransition) {
 			if (elapsedSplit >= nextSplitCheck) {
-				if (rand() % 2 == 0) {
+				if (rand() %2 ==0) {
 					inTransition = true;
 					pendingEnable = true;
 					transitionClock.restart();
 
 					// Start/target rotation for smooth lerp
 					m_transitionStartRotation = m_camera.getRotation();
-					m_transitionTargetRotation = 180.f; // rotating0 ->180
+					m_transitionTargetRotation =180.f; // rotating0 ->180
 				}
 				else {
 					splitClock.restart();
-					nextSplitCheck = randomFloat(1.f, 3.f);
+					nextSplitCheck = randomFloat(1.f,3.f);
 				}
 			}
 		}
@@ -803,27 +821,27 @@ void Game::update(float dt)
 
 				// Start/target rotation for smooth lerp
 				m_transitionStartRotation = m_camera.getRotation();
-				m_transitionTargetRotation = 0.f; // rotating180 ->0
+				m_transitionTargetRotation =0.f; // rotating180 ->0
 			}
 		}
 
 		if (inTransition) {
 			float t = transitionClock.getElapsedTime().asSeconds();
 			float alpha = t / TRANSITION_TIME;
-			if (alpha > 1.f) alpha = 1.f;
+			if (alpha >1.f) alpha =1.f;
 
 			// Smoothstep easing for a nicer feel: ease =3a^2 -2a^3
-			float ease = alpha * alpha * (3.f - 2.f * alpha);
+			float ease = alpha * alpha * (3.f -2.f * alpha);
 
 			// Interpolate rotation and apply every frame while transitioning
 			float curRot = m_transitionStartRotation + (m_transitionTargetRotation - m_transitionStartRotation) * ease;
 			m_camera.setRotation(curRot);
 
-			if (alpha >= 1.f) {
-				// transition finished — set final state exactly and reset flags
+			if (alpha >=1.f) {
+				// transition finished ? set final state exactly and reset flags
 				if (pendingEnable) {
 					splitMode = true;
-					splitDuration = randomFloat(2.f, 4.f);
+					splitDuration = randomFloat(2.f,4.f);
 					m_camera.setRotation(180.f); // ensure exact final value
 					splitClock.restart();
 				}
@@ -831,7 +849,7 @@ void Game::update(float dt)
 					splitMode = false;
 					m_camera.setRotation(0.f); // ensure exact final value
 					splitClock.restart();
-					nextSplitCheck = randomFloat(1.f, 3.f);
+					nextSplitCheck = randomFloat(1.f,3.f);
 				}
 				inTransition = false;
 				pendingEnable = false;
@@ -848,12 +866,12 @@ void Game::update(float dt)
 		inputLocked = false;
 		inputLockPending = false;
 		inputLockClock.restart();
-		nextInputLockCheck = randomFloat(3.f, 6.f);
+		nextInputLockCheck = randomFloat(3.f,6.f);
 	}
 
 	// --- Movement & input handling (guarded by m_gameOver) ---
 	b2Vec2 vel = m_player->GetLinearVelocity();
-	float moveSpeed = 5.f;
+	float moveSpeed =5.f;
 
 
 	// ----- ORIGINAL INPUT CODE (unchanged) -----
@@ -863,12 +881,12 @@ void Game::update(float dt)
 	bool jumpKeyS = Keyboard::isKeyPressed(Keyboard::S) || Keyboard::isKeyPressed(Keyboard::Down);
 	bool shiftKey = Keyboard::isKeyPressed(Keyboard::LShift) || Keyboard::isKeyPressed(Keyboard::RShift);
 
-	// If game-over is active, disable all real-time input — keep vel zero.
+	// If game-over is active, disable all real-time input ? keep vel zero.
 	if (m_gameOver)
 	{
 		// ensure no movement
-		vel.x = 0.f;
-		vel.y = 0.f;
+		vel.x =0.f;
+		vel.y =0.f;
 		m_player->SetLinearVelocity(vel); // if Player wrapper expects this
 		m_player->Update(dt, isGrounded); // update animations/logic in a frozen state
 	}
@@ -876,7 +894,7 @@ void Game::update(float dt)
 	{
 
 		// Shift = Walk (slower), else Run (faster)
-		moveSpeed = (shiftKey ? 5.f : 10.f);
+		moveSpeed = (shiftKey ?5.f :10.f);
 		m_player->SetWalking(shiftKey);
 
 		if (inputLocked) {
@@ -895,12 +913,12 @@ void Game::update(float dt)
 
 		if (leftKey) vel.x = -moveSpeed;
 		else if (rightKey) vel.x = moveSpeed;
-		else vel.x = 0;
+		else vel.x =0;
 
-		bool isGroundedNow = (m_contactListener.footContacts > 0);
+		bool isGroundedNow = (m_contactListener.footContacts >0);
 		bool jumpKey = jumpKeyW || jumpKeyS;
 
-		const float verticalEpsilon = 0.05f; // small threshold to treat as "not changing"
+		const float verticalEpsilon =0.05f; // small threshold to treat as "not changing"
 		bool canJumpNow = isGroundedNow && std::abs(vel.y) < verticalEpsilon;
 
 		if (jumpKey && canJumpNow) {
@@ -925,7 +943,7 @@ void Game::update(float dt)
 		b2Body* body = m_player->GetBody();
 		if (body) {
 			const b2Transform& xf = body->GetTransform();
-			float minx = 1e9f, miny = 1e9f, maxx = -1e9f, maxy = -1e9f;
+			float minx =1e9f, miny =1e9f, maxx = -1e9f, maxy = -1e9f;
 
 			for (b2Fixture* f = body->GetFixtureList(); f; f = f->GetNext()) {
 				if (f->IsSensor()) continue;
@@ -933,7 +951,7 @@ void Game::update(float dt)
 				if (s->GetType() != b2Shape::e_polygon) continue;
 
 				const b2PolygonShape* poly = static_cast<const b2PolygonShape*>(s);
-				for (int i = 0; i < poly->m_count; ++i) {
+				for (int i =0; i < poly->m_count; ++i) {
 					b2Vec2 v = b2Mul(xf, poly->m_vertices[i]);
 					if (v.x < minx) minx = v.x;
 					if (v.x > maxx) maxx = v.x;
@@ -947,19 +965,19 @@ void Game::update(float dt)
 				float w = (maxx - minx) * PPM;
 				float h = (maxy - miny) * PPM;
 				playerShape.setSize(sf::Vector2f(w, h));
-				playerShape.setOrigin(w * 0.5f, h * 0.5f);
-				playerShape.setPosition(((minx + maxx) * 0.5f) * PPM, ((miny + maxy) * 0.5f) * PPM);
+				playerShape.setOrigin(w *0.5f, h *0.5f);
+				playerShape.setPosition(((minx + maxx) *0.5f) * PPM, ((miny + maxy) *0.5f) * PPM);
 			}
 			else {
 				b2Vec2 p = body->GetPosition();
-				playerShape.setSize(sf::Vector2f(40.f, 40.f));
-				playerShape.setOrigin(20.f, 20.f);
+				playerShape.setSize(sf::Vector2f(40.f,40.f));
+				playerShape.setOrigin(20.f,20.f);
 				playerShape.setPosition(p.x * PPM, p.y * PPM);
 			}
 		}
 
-		// Determine whether player is "calm": either walking (shiftKey true) or standing still
-		bool isPlayerMoving = std::abs(vel.x) > 0.05f;
+		// Determine whether player is "calm": either walking (slower) or standing still
+		bool isPlayerMoving = std::abs(vel.x) >0.05f;
 		bool playerCalm = (!isPlayerMoving) || shiftKey;
 		m_worldView->checkCollision(playerShape, !playerCalm);
 
@@ -994,21 +1012,67 @@ void Game::update(float dt)
  			m_gameOverText.setOrigin(tb.left + tb.width *0.5f, tb.top + tb.height *0.5f);
 		}
 
+		// NEW: Win trigger handling
+		if (!m_win && m_worldView && m_worldView->consumeWinTrigger())
+		{
+			// start win countdown
+			m_win = true;
+			m_disableInputDuringGameOver = true; // reuse flag to disable input
+			m_gameOverClock.restart(); // reuse same clock and delay
+
+			// Stop music & emitters
+			m_audio.StopMusic();
+			if (m_dialogueEmitter && m_dialogueEmitter->buffer) m_dialogueEmitter->sound.stop();
+			if (m_effectEmitter && m_effectEmitter->buffer) m_effectEmitter->sound.stop();
+
+			// Play player win animation and disable input-driven motion
+			if (m_player) {
+				m_player->PlayWin();
+				// make sure player physics stop moving (client already zeros velocities elsewhere)
+				b2Body* pb = m_player->GetBody();
+				if (pb) { pb->SetLinearVelocity(b2Vec2(0.f,0.f)); pb->SetAngularVelocity(0.f); }
+			}
+
+			// Prepare the "YOU WIN" text (green)
+			m_gameOverText.setString("YOU WIN");
+			m_gameOverText.setFillColor(sf::Color::Green);
+			sf::FloatRect tb = m_gameOverText.getLocalBounds();
+			m_gameOverText.setOrigin(tb.left + tb.width *0.5f, tb.top + tb.height *0.5f);
+		}
+
 		// If we're currently in countdown, handle timing (do not let game world progress)
-		if (m_gameOver)
+		if (m_gameOver || m_win)
 		{
 			float elapsed = m_gameOverClock.getElapsedTime().asSeconds();
 			if (elapsed >= m_gameOverDelay)
 			{
-				// countdown finished -> respawn
-				m_gameOver = false;
-				m_disableInputDuringGameOver = false;
+				// countdown finished -> respawn or return to menu
+				if (m_gameOver) {
+					m_gameOver = false;
+					m_disableInputDuringGameOver = false;
 
-				// Reset gameplay (respawn the player) and resume audio
-				ResetGameplay(true);
-				m_audio.StartMusic();
+					// Reset gameplay (respawn the player) and resume audio
+					ResetGameplay(true);
+					m_audio.StartMusic();
 
-				// Ensure emitters reflect reset state (they're already stopped in ResetGameplay)
+					// Ensure emitters reflect reset state (they're already stopped in ResetGameplay)
+				}
+				else if (m_win) {
+					// On win -> go back to menu
+					m_win = false;
+					m_disableInputDuringGameOver = false;
+					m_state = GameState::MENU;
+					m_audio.StopMusic();
+					if (m_mainMenu) m_mainMenu->ResetMobileVisual();
+					// reset world for next run
+					if (m_worldView) m_worldView->ResetWorld();
+					// ensure player animation reset
+					if (m_player) m_player->ResetToIdle();
+				}
+				else {
+					// no-op
+				}
+				return;
 			}
 			else
 			{
@@ -1018,10 +1082,10 @@ void Game::update(float dt)
 			}
 		}
 
-
+		
 		// ----- Grocery: update emitter positions -----
 		// ----- Grocery: update emitter positions -----
-		if (m_groceryObstacleIndex >= 0)
+		if (m_groceryObstacleIndex >=0)
 		{
 			b2Vec2 gpos = m_worldView->getObstacleBodyPosition(m_groceryObstacleIndex);
 			if (m_groceryA) m_groceryA->position = gpos;
@@ -1032,7 +1096,7 @@ void Game::update(float dt)
 		// ---- Grocery: collision vs ambient behavior ----
 		bool collidingWithGrocery = (m_worldView->getLastCollidedObstacleIndex() == m_groceryObstacleIndex);
 
-		if (m_groceryObstacleIndex >= 0)
+		if (m_groceryObstacleIndex >=0)
 		{
 			// expire cooldown if elapsed
 			if (m_groceryCooldownActive &&
@@ -1065,20 +1129,20 @@ void Game::update(float dt)
 			}
 			else
 			{
-				// NOT colliding: do NOT clear m_groceryWaitingPlayerReply — we still want the player reply
+				// NOT colliding: do NOT clear m_groceryWaitingPlayerReply ? we still want the player reply
 				// Ambient random chatter should only occur when we're not waiting for a reply
 				if (!m_groceryWaitingPlayerReply)
 				{
 					if (m_groceryClock.getElapsedTime().asSeconds() >= m_nextGroceryLineTime)
 					{
 						m_groceryClock.restart();
-						m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+						m_nextGroceryLineTime = randomFloat(5.f,10.f);
 
 						// skip playing if any ambient is already playing
 						if (m_groceryA && m_groceryA->buffer && m_groceryA->sound.getStatus() != sf::Sound::Playing &&
 							m_groceryB && m_groceryB->buffer && m_groceryB->sound.getStatus() != sf::Sound::Playing)
 						{
-							if (rand() % 2 == 0)
+							if (rand() %2 ==0)
 							{
 								if (m_groceryA && m_groceryA->buffer) m_groceryA->sound.play();
 							}
@@ -1115,7 +1179,7 @@ void Game::update(float dt)
 						std::cerr << "DEBUG: player_reply emitter not found / buffer missing\n";
 					}
 
-					// Done waiting for this collision — reset flags so future collisions can re-trigger,
+					// Done waiting for this collision ? reset flags so future collisions can re-trigger,
 					// but start cooldown so they cannot re-trigger immediately
 					m_groceryWaitingPlayerReply = false;
 					m_groceryCollisionPlayed = false;
@@ -1129,7 +1193,7 @@ void Game::update(float dt)
 		}
 		else
 		{
-			// no collision — reset collision sequence and enable ambient random chatter
+			// no collision ? reset collision sequence and enable ambient random chatter
 			// NOTE: do NOT clear the cooldown here; cooldown should persist even if obstacle isn't present.
 			m_groceryCollisionPlayed = false;
 			m_groceryWaitingPlayerReply = false;
@@ -1137,13 +1201,13 @@ void Game::update(float dt)
 			if (m_groceryClock.getElapsedTime().asSeconds() >= m_nextGroceryLineTime)
 			{
 				m_groceryClock.restart();
-				m_nextGroceryLineTime = randomFloat(5.f, 10.f);
+				m_nextGroceryLineTime = randomFloat(5.f,10.f);
 
 				// skip playing if grocery collision emitter is mid-play (unlikely since not colliding)
 				if (m_groceryA && m_groceryA->buffer && m_groceryA->sound.getStatus() != sf::Sound::Playing &&
 					m_groceryB && m_groceryB->buffer && m_groceryB->sound.getStatus() != sf::Sound::Playing)
 				{
-					if (rand() % 2 == 0)
+					if (rand() %2 ==0)
 					{
 						if (m_groceryA && m_groceryA->buffer) m_groceryA->sound.play();
 					}
@@ -1159,7 +1223,7 @@ void Game::update(float dt)
 			}
 		}
 
-
+		
 		// --- Bus spawn timer ---
 		if (m_busSpawnClock.getElapsedTime().asSeconds() >= m_busSpawnInterval) {
 			SpawnBus();
@@ -1174,7 +1238,7 @@ void Game::update(float dt)
 			}
 
 			it->progress += dt / it->duration;
-			if (it->progress > 1.f) it->progress = 1.f;
+			if (it->progress >1.f) it->progress =1.f;
 
 			// linear interpolation
 			float t = it->progress;
@@ -1187,8 +1251,8 @@ void Game::update(float dt)
 				m_busEmitter->position = b2Vec2(nx * INV_PPM, ny * INV_PPM);
 			}
 
-			// Play the bus sound once when crossing middle of the view (t >= 0.5)
-			if (!it->playedEmitter && t >= 0.5f) {
+			// Play the bus sound once when crossing middle of the view (t >=0.5)
+			if (!it->playedEmitter && t >=0.5f) {
 				if (m_busEmitter && m_busEmitter->buffer) {
 					m_busEmitter->sound.stop();
 					m_busEmitter->sound.play();
@@ -1197,7 +1261,7 @@ void Game::update(float dt)
 			}
 
 			// finished
-			if (it->progress >= 1.f) {
+			if (it->progress >=1.f) {
 				it->active = false;
 				// stop emitter if still playing
 				if (m_busEmitter) m_busEmitter->sound.stop();
@@ -1208,7 +1272,7 @@ void Game::update(float dt)
 			++it;
 		}
 
-
+	
 
 
 	}
@@ -1228,7 +1292,7 @@ void Game::render()
 {
 	if (m_state == GameState::MENU) {
 		m_window.setView(m_defaultView);
-		m_window.clear(Color(20, 20, 30));
+		m_window.clear(Color(20,20,30));
 		m_mainMenu->Render(m_window);
 		m_window.display();
 		return;
@@ -1241,7 +1305,7 @@ void Game::render()
 
 	b2Vec2 pos = m_player->GetBody()->GetPosition();
 	Vector2f playerPosPixels(pos.x * PPM, pos.y * PPM);
-	Vector2f camCenter = { playerPosPixels.x,540 };
+	Vector2f camCenter = {playerPosPixels.x,540};
 	if (inTransition) {
 		camCenter.x += randomOffset(TRANSITION_SHAKE_MAG);
 		camCenter.y += randomOffset(TRANSITION_SHAKE_MAG);
@@ -1250,6 +1314,18 @@ void Game::render()
 		camCenter.x += randomOffset(PSYCHO_SHAKE_MAG);
 		camCenter.y += randomOffset(PSYCHO_SHAKE_MAG);
 	}
+
+	// Clamp camera X so it doesn't show beyond the level's maximum X
+	if (m_worldView) {
+		float levelMaxX = m_worldView->getLevelMaxX(); // in pixels
+		float halfViewW = m_camera.getSize().x *0.5f;
+		float maxCenterX = levelMaxX - halfViewW;
+		float minCenterX = halfViewW; // prevent showing negative/empty space on the left
+
+		if (camCenter.x > maxCenterX) camCenter.x = maxCenterX;
+		if (camCenter.x < minCenterX) camCenter.x = minCenterX;
+	}
+
 	m_camera.setCenter(camCenter);
 	m_window.setView(m_camera);
 
@@ -1299,27 +1375,28 @@ void Game::render()
 	m_window.draw(m_debugText);
 
 	// Draw game-over HUD if active
-	if (m_gameOver) {
+	if (m_gameOver || m_win) {
 		// draw the text in the default (screen) view so it appears as HUD and not world-space
 		m_window.setView(m_defaultView);
 
 		// Position the text near the top-center (adjust vertical offset as you like)
 		sf::Vector2f dvCenter = m_defaultView.getCenter();
-		m_gameOverText.setPosition(dvCenter.x, dvCenter.y - (m_window.getSize().y * 0.3f)); // above center
+		m_gameOverText.setPosition(dvCenter.x, dvCenter.y - (m_window.getSize().y *0.3f)); // above center
 
-		// Optionally draw a countdown number under "YOU LOSE"
+		// Optionally draw a countdown number under the message
 		float remaining = m_gameOverDelay - m_gameOverClock.getElapsedTime().asSeconds();
-		if (remaining < 0.f) remaining = 0.f;
+		if (remaining <0.f) remaining =0.f;
 		int secs = static_cast<int>(std::ceil(remaining));
 		sf::Text countdown;
 		countdown.setFont(m_font);
 		countdown.setCharacterSize(42);
+		// keep countdown white for both win/lose
 		countdown.setFillColor(sf::Color::White);
 		countdown.setStyle(sf::Text::Bold);
 		countdown.setString(std::to_string(secs));
 		sf::FloatRect cb = countdown.getLocalBounds();
-		countdown.setOrigin(cb.left + cb.width * 0.5f, cb.top + cb.height * 0.5f);
-		countdown.setPosition(dvCenter.x, dvCenter.y - (m_window.getSize().y * 0.22f));
+		countdown.setOrigin(cb.left + cb.width *0.5f, cb.top + cb.height *0.5f);
+		countdown.setPosition(dvCenter.x, dvCenter.y - (m_window.getSize().y *0.22f));
 
 		m_window.draw(m_gameOverText);
 		m_window.draw(countdown);

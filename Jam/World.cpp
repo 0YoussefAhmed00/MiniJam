@@ -13,9 +13,9 @@ World::World(b2World& worldRef)
 
 	// Create ALL obstacles here (from the second / latest version)
 	createObstacle(400, 568 + 210, true, 170, 190, "Assets/Obstacles/Untitled-2.png"); //0
-	createObstacle(1000, 470 + 235, false, 300, 200, "Assets/Obstacles/foull car.png"); //1
+	createObstacle(1150, 470 + 250, false, 400, 350, "Assets/Obstacles/foull car.png"); //1
 
-	createObstacle(1800, 620 + 235, false, 180, 30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
+	createObstacle(1850, 620 + 235, false, 180, 30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
 
 
 	createObstacle(2900, 620 + 230, false, 110, 35, "Assets/Obstacles/sewers_cap1.png"); //3
@@ -41,9 +41,13 @@ World::World(b2World& worldRef)
 
 
 	/////Obstacles for only dicoration (the player does not interact with them)
-	createObstacle(680, 645 + 210, true, 40, 45, "Assets/Obstacles/no cola.png");
-	createObstacle(-470, 510 + 210, true, 440, 240, "Assets/Obstacles/bus.png");
-	createObstacle(-640, 560 + 210, true, 130, 130, "Assets/Obstacles/trash.png");
+	createObstacle(680, 645 + 210, true, 40, 45, "Assets/Obstacles/no cola.png"); //14
+	//createObstacle(-470,510 +210, true,440,240, "Assets/Obstacles/bus.png");
+	//createObstacle(-640,560 +210, true,130,130, "Assets/Obstacles/trash.png");
+
+
+	createObstacle(8750, 500, false, 60, 700, "Assets/Obstacles/Door_1.png"); //15
+
 
 	// Load doggie angry texture (optional, non-fatal)
 	if (!m_doggieAngryTexture.loadFromFile("Assets/Obstacles/doggieangry.png")) {
@@ -131,6 +135,7 @@ World::World(b2World& worldRef)
 	m_birdAnim.SetFacingRight(true);
 
 }
+
 
 
 void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
@@ -232,6 +237,7 @@ void World::ResetWorld()
 	mIsColliding = false;
 	lastCollidedObstacleIndex = -1;
 	mGameOverTriggered = false;
+	mWinTriggered = false;
 
 	for (auto& o : obstacles)
 		resetObstacle(o);
@@ -365,6 +371,16 @@ bool World::consumeGameOverTrigger()
 	mGameOverTriggered = false; // auto-clear on read
 	return triggered;
 }
+
+bool World::consumeWinTrigger()
+{
+	bool triggered = mWinTriggered;
+	mWinTriggered = false;
+	return triggered;
+}
+
+
+
 static bool IsTouchingGround(b2Body* body, uint16 groundCategoryBits)
 {
 	if (!body) return false;
@@ -524,7 +540,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				}
 				// Otherwise, do nothing. When the man lands we swap texture and remove player collision.
 			}
-
+			
 			// DOGGIE angry swap: index9 -> if player is colliding and playerCalm (walking/idle) then use angry texture
 			if (obj.textureIndex == 9)
 			{
@@ -548,6 +564,16 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				//	}
 				//}
 			}
+
+			// WIN TRIGGER: Door (textureIndex15)
+			if (obj.textureIndex == 15)
+			{
+				// Set a win flag; Game will read via consumeWinTrigger()
+				obj.shape.setFillColor(sf::Color::Green);
+				mWinTriggered = true;
+			}
+
+
 		}
 		else
 		{
@@ -628,6 +654,11 @@ b2Vec2 World::getObstacleBodyPosition(int index) const
 int World::getLastCollidedObstacleIndex() const
 {
 	return lastCollidedObstacleIndex;
+}
+
+float World::getLevelMaxX() const
+{
+ return levelMaxX;
 }
 
 void World::draw(sf::RenderWindow& window)
@@ -787,6 +818,8 @@ void World::updateParallax(const sf::Vector2f& camPos)
 			l.sprite.setPosition(p.x, p.y + parallaxYOffset);
 		}
 	}
+
+
 }
 
 // ======================================================================

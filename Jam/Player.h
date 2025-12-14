@@ -11,6 +11,11 @@ public:
     float m_waveTimer = 0.f;
     int m_lastWaveFrame = -1;
 
+    // Win animation state
+    bool m_playingWin = false;
+    float m_winTimer = 0.f;
+    int m_lastWinFrame = -1;
+
     // Construct player and create physics body + fixtures in the provided world
     Player(b2World* world, float startX = 640.f, float startY = 200.f);
     ~Player();
@@ -25,6 +30,13 @@ public:
     void Draw(sf::RenderWindow& window);
 
     void PlayWave();
+
+    // Play win animation (non-looping) and disable usual controls visually
+    void PlayWin();
+
+    // Reset visual/animation state to idle (used on ResetGameplay)
+    void ResetToIdle();
+
     // physics accessors
     b2Body* GetBody() const { return m_body; }
     b2Fixture* GetFootFixture() const { return m_footFixture; }

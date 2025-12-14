@@ -67,6 +67,12 @@ public:
 	// Game-over trigger handshake with Game
 	bool consumeGameOverTrigger();
 
+	// Win trigger for level exit
+	bool consumeWinTrigger();
+
+	// Expose level extents so Game can clamp camera
+	float getLevelMaxX() const;
+
 	// New: Reset the whole world (obstacles, flags)
 	void ResetWorld();
 
@@ -119,6 +125,9 @@ private:
 
 	// Game over trigger
 	bool mGameOverTriggered = false;
+
+	// Win trigger
+	bool mWinTriggered = false;
 
 	// Delay before triggering game over after sewer cap collision
 	bool m_sewerGameOverPending = false;
