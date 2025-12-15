@@ -98,13 +98,18 @@ World::World(b2World& worldRef)
 	// 🐦 Bird animation setup
 	// Bird frames (your3 PNGs)
 	std::vector<std::string> birdFrames = {
-	"Assets/Obstacles/Bird1.png",
-	"Assets/Obstacles/Bird2.png",
-	"Assets/Obstacles/Bird3.png"
+	"Assets/Hamama/1.png",
+	"Assets/Hamama/2.png",
+	"Assets/Hamama/3.png",
+	"Assets/Hamama/4.png",
+		"Assets/Hamama/5.png",
+		"Assets/Hamama/6.png",
+		"Assets/Hamama/8.png",
+		"Assets/Hamama/7.png"
 	};
 
 	// Create a looping clip called "fly"
-	m_birdAnim.AddClip("fly", birdFrames,0.08f, true);
+	m_birdAnim.AddClip("fly", birdFrames,0.12f, true);
 	m_birdAnim.SetClip("fly", true);
 
 	// Find the obstacle that uses Bird1.png
