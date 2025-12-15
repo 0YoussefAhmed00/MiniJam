@@ -3,50 +3,53 @@
 #include <iostream>
 
 #include <SFML/Graphics.hpp>
-constexpr float PPM = 30.f; // Pixels per meter
-constexpr float INV_PPM = 1.f / PPM;
+constexpr float PPM =30.f; // Pixels per meter
+constexpr float INV_PPM =1.f / PPM;
 
 World::World(b2World& worldRef)
 	: physicsWorld(worldRef) // Gravity downward
 {
 	initParallax();
 
+	// Preload psycho parallax textures to avoid hitches when switching
+	preloadPsychoParallaxTextures();
+
 	// Create ALL obstacles here (from the second / latest version)
-	createObstacle(400, 568 + 210, true, 170, 190, "Assets/Obstacles/Untitled-2.png"); //0
-	createObstacle(1150, 470 + 250, false, 400, 350, "Assets/Obstacles/foull car.png"); //1
+	createObstacle(400,568 +210, true,170,190, "Assets/Obstacles/Untitled-2.png"); //0
+	createObstacle(1150,470 +250, false,400,350, "Assets/Obstacles/foull car.png"); //1
 
-	createObstacle(1850, 620 + 235, false, 180, 30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
+	createObstacle(1850,620 +235, false,180,30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
 
 
-	createObstacle(2900, 620 + 230, false, 110, 35, "Assets/Obstacles/sewers_cap1.png"); //3
+	createObstacle(2900,620 +230, false,110,35, "Assets/Obstacles/sewers_cap1.png"); //3
 
-	createObstacle(2910, 620 + 200, false, 350, 200, "Assets/Obstacles/sewers.png"); //4
+	createObstacle(2910,620 +200, false,350,200, "Assets/Obstacles/sewers.png"); //4
 
-	createObstacle(3800, 600 + 170, false, 250 * 1.1f, 170 * 1.2f, "Assets/Obstacles/grocery.png"); //5
+	createObstacle(3800,600 +170, false,250 *1.1f,170 *1.2f, "Assets/Obstacles/grocery.png"); //5
 
-	createObstacle(4825, 0 + 210, false, 75 / 3, 200 / 3, "Assets/Obstacles/the shit.png"); //6
+	createObstacle(4825,0 +210, false,75 /3,200 /3, "Assets/Obstacles/the shit.png"); //6
 
 	//bird
-	createObstacle(4800, 0 + 210, false, 150, 100, "Assets/Obstacles/Bird1.png"); //7
-	createObstacle(4700, 600 + 210, false, 600, 100, "Assets/Obstacles/Untitled-3.png"); //8
+	createObstacle(4800,0 +210, false,150,100, "Assets/Obstacles/Bird1.png"); //7
+	createObstacle(4700,600 +210, false,600,100, "Assets/Obstacles/Untitled-3.png"); //8
 
-	createObstacle(6000, 640 + 170, false, 220, 220, "Assets/Obstacles/doggie.png"); //9
+	createObstacle(6000,640 +170, false,220,220, "Assets/Obstacles/doggie.png"); //9
 
-	createObstacle(7200, -300 + 210, false, 250, 150, "Assets/Obstacles/man falling.png"); //10
-	createObstacle(7200, 600 + 210, false, 400, 100, "Assets/Obstacles/Untitled-3.png"); //11
+	createObstacle(7200, -300 +210, false,250,150, "Assets/Obstacles/man falling.png"); //10
+	createObstacle(7200,600 +210, false,400,100, "Assets/Obstacles/Untitled-3.png"); //11
 
 
-	createObstacle(630, 580 + 210, true, 150, 160, "Assets/Obstacles/trash.png"); //12
-	createObstacle(520, 595 + 210, true, 140, 155, "Assets/Obstacles/trash-1.png"); //13
+	createObstacle(630,580 +210, true,150,160, "Assets/Obstacles/trash.png"); //12
+	createObstacle(520,595 +210, true,140,155, "Assets/Obstacles/trash-1.png"); //13
 
 
 	/////Obstacles for only dicoration (the player does not interact with them)
-	createObstacle(680, 645 + 210, true, 40, 45, "Assets/Obstacles/no cola.png"); //14
+	createObstacle(680,645 +210, true,40,45, "Assets/Obstacles/no cola.png"); //14
 	//createObstacle(-470,510 +210, true,440,240, "Assets/Obstacles/bus.png");
 	//createObstacle(-640,560 +210, true,130,130, "Assets/Obstacles/trash.png");
 
 
-	createObstacle(8750, 500, false, 60, 700, "Assets/Obstacles/Door_1.png"); //15
+	createObstacle(8750,500, false,60,700, "Assets/Obstacles/Door_1.png"); //15
 
 
 	// Load doggie angry texture (optional, non-fatal)
@@ -70,7 +73,7 @@ World::World(b2World& worldRef)
 	"Assets/Obstacles/sewers_cap7.png",
 	"Assets/Obstacles/sewers_cap8.png"
 	};
-	m_sewersAnim.AddClip("open", sewerFrames, 0.06f, /*loop=*/false);
+	m_sewersAnim.AddClip("open", sewerFrames,0.06f, /*loop=*/false);
 	m_sewersAnim.SetClip("open", true); // start on frame0
 
 	// Find the obstacle that uses sewers_cap1.png
@@ -83,13 +86,13 @@ World::World(b2World& worldRef)
 	}
 
 	m_sewersAnim.BindSprite(&m_sewersSprite);
-	m_sewersSprite.setScale(0.7f, 0.7f);
+	m_sewersSprite.setScale(0.7f,0.7f);
 
 	m_sewersPlaying = false;
 	m_sewersLastFrame = -1;
 
 	m_sewerGameOverPending = false;
-	m_sewerGameOverTimer = 0.f;
+	m_sewerGameOverTimer =0.f;
 
 
 	// 🐦 Bird animation setup
@@ -101,7 +104,7 @@ World::World(b2World& worldRef)
 	};
 
 	// Create a looping clip called "fly"
-	m_birdAnim.AddClip("fly", birdFrames, 0.08f, true);
+	m_birdAnim.AddClip("fly", birdFrames,0.08f, true);
 	m_birdAnim.SetClip("fly", true);
 
 	// Find the obstacle that uses Bird1.png
@@ -116,7 +119,7 @@ World::World(b2World& worldRef)
 	else
 	{
 		// Fallback, just in case
-		m_birdStartPos = sf::Vector2f(4800.f, 210.f);
+		m_birdStartPos = sf::Vector2f(4800.f,210.f);
 		m_birdSprite.setPosition(m_birdStartPos);
 	}
 
@@ -124,18 +127,100 @@ World::World(b2World& worldRef)
 	m_birdAnim.BindSprite(&m_birdSprite);
 
 	// Optional: make the bird smaller
-	m_birdSprite.setScale(0.4f, 0.4f);
+	m_birdSprite.setScale(0.4f,0.4f);
 
 	// Patrol settings (left/right limits around the start position)
-	m_birdMinX = m_birdStartPos.x - 250.f; // left limit
-	m_birdMaxX = m_birdStartPos.x + 250.f; // right limit
-	m_birdSpeed = 150.f; // pixels per second
+	m_birdMinX = m_birdStartPos.x -250.f; // left limit
+	m_birdMaxX = m_birdStartPos.x +250.f; // right limit
+	m_birdSpeed =150.f; // pixels per second
 
 	m_birdGoingRight = true;
 	m_birdAnim.SetFacingRight(true);
 
 }
 
+
+
+void World::loadParallaxTextures(const std::string& basePath)
+{
+	// basePath should contain folder path where files are named1.png ...13.png
+	for (int i =0; i < static_cast<int>(parallaxLayers.size()); ++i)
+	{
+		std::string path = basePath + std::to_string(i +1) + ".png";
+		if (!parallaxLayers[i].texture.loadFromFile(path))
+			std::cerr << "FAILED TO LOAD PARALLAX: " << path << "\n";
+		parallaxLayers[i].texture.setRepeated(true);
+		parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
+		parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0,0,1920,1080));
+	}
+}
+
+void World::preloadPsychoParallaxTextures()
+{
+	if (m_parallaxPsychoLoaded) return;
+
+	m_parallaxPsychoTextures.clear();
+	m_parallaxPsychoTextures.resize(parallaxLayers.size());
+
+	for (size_t i =0; i < parallaxLayers.size(); ++i)
+	{
+		std::string path = m_parallaxPsychoBase + std::to_string(i +1) + ".png";
+		if (!m_parallaxPsychoTextures[i].loadFromFile(path))
+		{
+			// If some files are missing, warn but continue. We'll keep the normal texture as fallback.
+			std::cerr << "Warning: failed to preload psycho parallax texture: " << path << "\n";
+			// leave texture empty (sprite will still display normal texture)
+		}
+		else
+		{
+			m_parallaxPsychoTextures[i].setRepeated(true);
+		}
+	}
+
+	m_parallaxPsychoLoaded = true;
+}
+
+void World::SetPsychoMode(bool enable)
+{
+	if (enable == m_parallaxPsycho) return; // no change
+	m_parallaxPsycho = enable;
+
+	if (m_parallaxPsycho)
+	{
+		// Ensure preloaded textures exist
+		if (!m_parallaxPsychoLoaded)
+			preloadPsychoParallaxTextures();
+
+		// Apply preloaded textures where available. If a psycho texture is empty, keep normal.
+		for (size_t i =0; i < parallaxLayers.size(); ++i)
+		{
+			if (i < m_parallaxPsychoTextures.size() && m_parallaxPsychoTextures[i].getSize().x >0)
+			{
+				parallaxLayers[i].sprite.setTexture(m_parallaxPsychoTextures[i]);
+				parallaxLayers[i].texture = parallaxLayers[i].texture; // no-op to keep normal texture cached
+				parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0,0,1920,1080));
+				parallaxLayers[i].sprite.setScale(parallaxLayers[i].scale, parallaxLayers[i].scale);
+			}
+			else
+			{
+				// fallback to normal if psycho texture not loaded
+				parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
+				parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0,0,1920,1080));
+				parallaxLayers[i].sprite.setScale(parallaxLayers[i].scale, parallaxLayers[i].scale);
+			}
+		}
+	}
+	else
+	{
+		// Restore normal textures (already loaded into parallaxLayers[].texture)
+		for (size_t i =0; i < parallaxLayers.size(); ++i)
+		{
+			parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
+			parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0,0,1920,1080));
+			parallaxLayers[i].sprite.setScale(parallaxLayers[i].scale, parallaxLayers[i].scale);
+		}
+	}
+}
 
 
 void World::createObstacle(float x, float y, bool onlyGround, float scaleX, float scaleY, const std::string& textureFile)
@@ -159,27 +244,27 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
 	b2Body* body = physicsWorld.CreateBody(&bodyDef);
 
 	b2PolygonShape box;
-	box.SetAsBox(scaleX / 2.f * INV_PPM, scaleY / 2.f * INV_PPM); // Box2D half-size
+	box.SetAsBox(scaleX /2.f * INV_PPM, scaleY /2.f * INV_PPM); // Box2D half-size
 
 	b2FixtureDef fixture;
 	fixture.shape = &box;
-	fixture.density = onlyGround ? 0.f : 2.f;
+	fixture.density = onlyGround ?0.f :2.f;
 	fixture.filter.categoryBits = CATEGORY_OBSTACLE;
 	fixture.filter.maskBits = onlyGround ? (CATEGORY_GROUND | CATEGORY_PLAYER) : CATEGORY_GROUND;
-	fixture.friction = 0.0f;
+	fixture.friction =0.0f;
 
 
 	body->CreateFixture(&fixture);
 
 	// -------- SFML SHAPE --------
 	sf::RectangleShape shape(sf::Vector2f(scaleX, scaleY));
-	shape.setOrigin(scaleX / 2.f, scaleY / 2.f);
+	shape.setOrigin(scaleX /2.f, scaleY /2.f);
 	shape.setPosition(x, y);
 	shape.setTexture(&obstacleTextures.back());
-	shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
+	shape.setTextureRect(sf::IntRect(0,0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
 
 	// Store obstacle with texture index
-	obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() - 1);
+	obstacles.emplace_back(body, shape, onlyGround, obstacleTextures.size() -1);
 
 	// Capture initial Box2D state and filters for reset
 	auto& o = obstacles.back();
@@ -190,8 +275,8 @@ void World::createObstacle(float x, float y, bool onlyGround, float scaleX, floa
 	o.initialMaskBits = fixture.filter.maskBits;
 
 	// Update level extents (in pixels)
-	float left = x - scaleX * 0.5f;
-	float right = x + scaleX * 0.5f;
+	float left = x - scaleX *0.5f;
+	float right = x + scaleX *0.5f;
 	if (left < levelMinX) levelMinX = left;
 	if (right > levelMaxX) levelMaxX = right;
 
@@ -216,17 +301,17 @@ void World::resetObstacle(Obstacle& o)
 
 	// Sync SFML representation and color
 	o.shape.setPosition(o.startPosB2.x * PPM, o.startPosB2.y * PPM);
-	o.shape.setRotation(o.startAngle * 180.f / 3.14159f);
+	o.shape.setRotation(o.startAngle *180.f /3.14159f);
 	o.shape.setFillColor(sf::Color::White);
 
 	// If this obstacle was the man-fall and we had swapped its texture, restore original texture
-	if (o.textureIndex == 10)
+	if (o.textureIndex ==10)
 	{
-		if (o.textureIndex >= 0 && o.textureIndex < obstacleTextures.size()) {
+		if (o.textureIndex >=0 && o.textureIndex < obstacleTextures.size()) {
 			sf::Texture& tex = obstacleTextures[o.textureIndex];
 			o.shape.setTexture(&tex);
 			sf::Vector2u texSize = tex.getSize();
-			o.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
+			o.shape.setTextureRect(sf::IntRect(0,0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
 		}
 	}
 }
@@ -272,7 +357,7 @@ void World::ResetWorld()
 
 	// Clear pending sewer game-over timer
 	m_sewerGameOverPending = false;
-	m_sewerGameOverTimer = 0.f;
+	m_sewerGameOverTimer =0.f;
 
 	// Reset man-fell landing state
 	m_manFellLanded = false;
@@ -292,13 +377,13 @@ World::Obstacle* World::getObstacleByTexture(size_t textureIndex)
 // ======================================================================
 void World::update(float dt, const sf::Vector2f& camPos)
 {
-	physicsWorld.Step(dt, 8, 3);
+	physicsWorld.Step(dt,8,3);
 
 	// Tick delayed sewer game-over timer
 	if (m_sewerGameOverPending)
 	{
 		m_sewerGameOverTimer -= dt;
-		if (m_sewerGameOverTimer <= 0.f)
+		if (m_sewerGameOverTimer <=0.f)
 		{
 			m_sewerGameOverPending = false;
 			mGameOverTriggered = true;
@@ -314,7 +399,7 @@ void World::update(float dt, const sf::Vector2f& camPos)
 		float angle = obj.body->GetAngle();
 
 		obj.shape.setPosition(pos.x * PPM, pos.y * PPM);
-		obj.shape.setRotation(angle * 180.f / 3.14159f);
+		obj.shape.setRotation(angle *180.f /3.14159f);
 	}
 
 
@@ -331,8 +416,8 @@ void World::update(float dt, const sf::Vector2f& camPos)
 		{
 			m_sewersLastFrame = currentFrame;
 			//How much to move to the right per frame (tweak this)
-			float stepX = 60.f;
-			float stepY = 0.f;
+			float stepX =60.f;
+			float stepY =0.f;
 			m_sewersSprite.move(stepX, stepY);
 		}
 	}
@@ -343,7 +428,7 @@ void World::update(float dt, const sf::Vector2f& camPos)
 	sf::Vector2f pos = m_birdSprite.getPosition();
 
 	// Direction: +1 = right, -1 = left
-	float dir = m_birdGoingRight ? 1.f : -1.f;
+	float dir = m_birdGoingRight ?1.f : -1.f;
 	pos.x += dir * m_birdSpeed * dt;
 
 	// Check limits and flip direction
@@ -397,7 +482,7 @@ static bool IsTouchingGround(b2Body* body, uint16 groundCategoryBits)
 		const uint16 cb = fb->GetFilterData().categoryBits;
 
 		// If either contact fixture is ground, we consider the body touching ground
-		if ((ca & groundCategoryBits) != 0 || (cb & groundCategoryBits) != 0)
+		if ((ca & groundCategoryBits) !=0 || (cb & groundCategoryBits) !=0)
 			return true;
 	}
 	return false;
@@ -410,7 +495,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 
 	bool fall6ActiveThisFrame = false;
 
-	for (size_t i = 0; i < obstacles.size(); ++i)
+	for (size_t i =0; i < obstacles.size(); ++i)
 	{
 		auto& obj = obstacles[i];
 		sf::FloatRect obsBounds = obj.shape.getGlobalBounds();
@@ -422,7 +507,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				lastCollidedObstacleIndex = static_cast<int>(i);
 
 			// 🔥 SEWER CAP COLLISION
-			if (obj.textureIndex == 3)
+			if (obj.textureIndex ==3)
 			{
 				obj.shape.setFillColor(sf::Color::Yellow); // keep your color
 
@@ -443,7 +528,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 					for (b2Body* b = physicsWorld.GetBodyList(); b; b = b->GetNext()) {
 						for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext()) {
 							b2Filter flt = f->GetFilterData();
-							if ((flt.categoryBits & CATEGORY_PLAYER) != 0) {
+							if ((flt.categoryBits & CATEGORY_PLAYER) !=0) {
 								// store original mask
 								m_modifiedPlayerFixtures.emplace_back(f, flt.maskBits);
 								// remove ground bit from mask
@@ -455,17 +540,17 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 
 					// Start2-second countdown before signalling game over
 					m_sewerGameOverPending = true;
-					m_sewerGameOverTimer = 2.0f; // seconds
+					m_sewerGameOverTimer =2.0f; // seconds
 				}
 
 				// Do NOT immediately set mGameOverTriggered; it will be set after timer elapses
 			}
-			else if (obj.textureIndex == 7)
+			else if (obj.textureIndex ==7)
 			{
 				obj.body->SetType(b2_dynamicBody);
 				obj.shape.setFillColor(sf::Color::Blue);
 			}
-			else if (obj.textureIndex == 8)
+			else if (obj.textureIndex ==8)
 			{
 				// Mark that trigger8 is active this frame (can keep if you use it elsewhere)
 				fall6ActiveThisFrame = true;
@@ -480,7 +565,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 						sf::Vector2f birdPos = m_birdSprite.getPosition();
 
 						// If you want a small offset below the bird, change offsetYPx (positive = lower on screen)
-						const float offsetYpx = 0.f;
+						const float offsetYpx =0.f;
 						b2Vec2 newPos(
 							birdPos.x * INV_PPM,
 							(birdPos.y + offsetYpx) * INV_PPM
@@ -508,13 +593,13 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				}
 			}
 
-			else if (obj.textureIndex == 6)
+			else if (obj.textureIndex ==6)
 			{
 				// Player hits index6 -> trigger game over (Game handles reset)
 				obj.shape.setFillColor(sf::Color::Red);
 				mGameOverTriggered = true;
 			}
-			else if (obj.textureIndex == 11)
+			else if (obj.textureIndex ==11)
 			{
 				Obstacle* fallingObj = getObstacleByTexture(10);
 				if (fallingObj && fallingObj->body)
@@ -530,7 +615,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				}
 			}
 
-			else if (obj.textureIndex == 10)
+			else if (obj.textureIndex ==10)
 			{
 				// If the man obstacle is currently dynamic (falling) and not yet marked as landed,
 				// colliding with the player should trigger game over.
@@ -542,13 +627,13 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 			}
 			
 			// DOGGIE angry swap: index9 -> if player is colliding and playerCalm (walking/idle) then use angry texture
-			if (obj.textureIndex == 9)
+			if (obj.textureIndex ==9)
 			{
-				if (playerCalm && m_doggieAngryTexture.getSize().x > 0)
+				if (playerCalm && m_doggieAngryTexture.getSize().x >0)
 				{
 					obj.shape.setTexture(&m_doggieAngryTexture);
 					sf::Vector2u ts = m_doggieAngryTexture.getSize();
-					obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(ts.x), static_cast<int>(ts.y)));
+					obj.shape.setTextureRect(sf::IntRect(0,0, static_cast<int>(ts.x), static_cast<int>(ts.y)));
 
 					// If the dog becomes angry while colliding with the player -> trigger game over
 					mGameOverTriggered = true;
@@ -556,20 +641,20 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				//else
 				//{
 				//	// restore original texture if available
-				//	if (obj.textureIndex >= 0 && obj.textureIndex < obstacleTextures.size()) {
+				//	if (obj.textureIndex >=0 && obj.textureIndex < obstacleTextures.size()) {
 				//		sf::Texture& tex = obstacleTextures[obj.textureIndex];
 				//		obj.shape.setTexture(&tex);
 				//		sf::Vector2u texSize = tex.getSize();
-				//		obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
+				//		obj.shape.setTextureRect(sf::IntRect(0,0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
 				//	}
 				//}
 			}
 
 			// WIN TRIGGER: Door (textureIndex15)
-			if (obj.textureIndex == 15)
+			if (obj.textureIndex ==15)
 			{
 				// Set a win flag; Game will read via consumeWinTrigger()
-				obj.shape.setFillColor(sf::Color::Green);
+				//obj.shape.setFillColor(sf::Color::Green);
 				mWinTriggered = true;
 			}
 
@@ -578,14 +663,14 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 		else
 		{
 			// Restore visuals for non-colliding obstacles
-			if (!(obj.textureIndex == 10 && m_manFellLanded)) // keep landed man frame if landed
+			if (!(obj.textureIndex ==10 && m_manFellLanded)) // keep landed man frame if landed
 			{
-				if (obj.textureIndex >= 0 && obj.textureIndex < obstacleTextures.size())
+				if (obj.textureIndex >=0 && obj.textureIndex < obstacleTextures.size())
 				{
 					sf::Texture& tex = obstacleTextures[obj.textureIndex];
 					obj.shape.setTexture(&tex);
 					sf::Vector2u texSize = tex.getSize();
-					obj.shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
+					obj.shape.setTextureRect(sf::IntRect(0,0, static_cast<int>(texSize.x), static_cast<int>(texSize.y)));
 				}
 			}
 			obj.shape.setFillColor(sf::Color::White);
@@ -613,11 +698,11 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 			if (IsTouchingGround(man->body, CATEGORY_GROUND))
 			{
 				// Swap to frame2 if we have that texture
-				if (m_manFellFrame2.getSize().x > 0)
+				if (m_manFellFrame2.getSize().x >0)
 				{
 					man->shape.setTexture(&m_manFellFrame2);
 					sf::Vector2u ts = m_manFellFrame2.getSize();
-					man->shape.setTextureRect(sf::IntRect(0, 0, static_cast<int>(ts.x), static_cast<int>(ts.y)));
+					man->shape.setTextureRect(sf::IntRect(0,0, static_cast<int>(ts.x), static_cast<int>(ts.y)));
 				}
 
 				// Disable collision with player for this obstacle's fixtures
@@ -635,7 +720,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 
 int World::findObstacleByTextureSubstring(const std::string& substr) const
 {
-	for (size_t i = 0; i < obstacleTextureFiles.size(); ++i) {
+	for (size_t i =0; i < obstacleTextureFiles.size(); ++i) {
 		if (obstacleTextureFiles[i].find(substr) != std::string::npos) {
 			return static_cast<int>(i);
 		}
@@ -645,9 +730,9 @@ int World::findObstacleByTextureSubstring(const std::string& substr) const
 
 b2Vec2 World::getObstacleBodyPosition(int index) const
 {
-	if (index < 0 || index >= static_cast<int>(obstacles.size())) return b2Vec2(0.f, 0.f);
+	if (index <0 || index >= static_cast<int>(obstacles.size())) return b2Vec2(0.f,0.f);
 	b2Body* b = obstacles[index].body;
-	if (!b) return b2Vec2(0.f, 0.f);
+	if (!b) return b2Vec2(0.f,0.f);
 	return b->GetPosition();
 }
 
@@ -670,12 +755,13 @@ void World::draw(sf::RenderWindow& window)
 	for (auto& obj : obstacles)
 	{
 
-		if (obj.textureIndex == 3) // sewer cap
+		if (obj.textureIndex ==3) // sewer cap
 			continue;
-		if (obj.textureIndex == 7) // bird
+		if (obj.textureIndex ==7) // bird
 			continue;
-		if (obj.textureIndex == 6 && !m_poopDropped)
+		if (obj.textureIndex ==6 && !m_poopDropped)
 			continue; // 💩 don't draw poop before it drops
+
 
 
 
@@ -740,9 +826,9 @@ void World::initParallax()
 		{0.0f,0.0f,300.0f,1.0f}, // layer14 (All Props)
 	};
 
-	for (int i = 0; i < 14; i++)
+	for (int i =0; i <14; i++)
 	{
-		std::string path = "Assets/Parallax/" + std::to_string(i + 1) + ".png";
+		std::string path = "Assets/Parallax/" + std::to_string(i +1) + ".png";
 
 		if (!parallaxLayers[i].texture.loadFromFile(path))
 			std::cerr << "FAILED TO LOAD PARALLAX: " << path << "\n";
@@ -750,7 +836,7 @@ void World::initParallax()
 		parallaxLayers[i].texture.setRepeated(true);
 
 		parallaxLayers[i].sprite.setTexture(parallaxLayers[i].texture);
-		parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0, 0, 1920, 1080));
+		parallaxLayers[i].sprite.setTextureRect(sf::IntRect(0,0,1920,1080));
 
 		// Apply user-friendly controls
 		parallaxLayers[i].speedX = config[i].speedX;
@@ -772,20 +858,20 @@ void World::updateParallax(const sf::Vector2f& camPos)
 {
 	float dtc = mCloudClock.restart().asSeconds(); // time since last frame
 
-	for (size_t i = 0; i < parallaxLayers.size(); ++i)
+	for (size_t i =0; i < parallaxLayers.size(); ++i)
 	{
 		auto& layer = parallaxLayers[i];
 
 		float px, py;
 
 		// cloud layers at indices1 and12 (per the second version)
-		if (i == 1 || i == 12)
+		if (i ==1 || i ==12)
 		{
 			// independent drift
-			if (i == 1)
+			if (i ==1)
 				layer.baseXOffset += cloudSpeed * dtc;
 			else
-				layer.baseXOffset += (cloudSpeed + 15.f) * dtc;
+				layer.baseXOffset += (cloudSpeed +15.f) * dtc;
 
 			// wrap offset to avoid floating point overflow
 			float texW = layer.texture.getSize().x * layer.scale;
@@ -829,14 +915,14 @@ void World::updateParallax(const sf::Vector2f& camPos)
 // Draw background layers (0 →11)
 void World::drawParallaxBackground(sf::RenderWindow& window)
 {
-	for (size_t i = 0; i < 12 && i < parallaxLayers.size(); ++i) // layers0–11
+	for (size_t i =0; i <12 && i < parallaxLayers.size(); ++i) // layers0–11
 		drawLayer(window, parallaxLayers[i]);
 }
 
 // Draw foreground layers (12 → end)
 void World::drawParallaxForeground(sf::RenderWindow& window)
 {
-	for (size_t i = 12; i < parallaxLayers.size(); ++i)
+	for (size_t i =12; i < parallaxLayers.size(); ++i)
 		drawLayer(window, parallaxLayers[i]);
 }
 
@@ -845,19 +931,19 @@ void World::drawLayer(sf::RenderWindow& window, ParallaxLayer& layer)
 {
 	sf::View view = window.getView();
 	float viewW = view.getSize().x;
-	float viewLeft = view.getCenter().x - viewW * 0.5f;
+	float viewLeft = view.getCenter().x - viewW *0.5f;
 
 	float texW = layer.texture.getSize().x * layer.scale;
-	if (texW <= 0.f) return; // safety
+	if (texW <=0.f) return; // safety
 
 	float baseX = std::fmod(layer.sprite.getPosition().x, texW);
-	if (baseX > 0) baseX -= texW;
+	if (baseX >0) baseX -= texW;
 	float y = layer.sprite.getPosition().y;
 
-	int firstTile = static_cast<int>(std::floor((viewLeft - baseX) / texW)) - 1;
-	int needed = static_cast<int>(std::ceil(viewW / texW)) + 3;
+	int firstTile = static_cast<int>(std::floor((viewLeft - baseX) / texW)) -1;
+	int needed = static_cast<int>(std::ceil(viewW / texW)) +3;
 
-	for (int i = 0; i < needed; ++i)
+	for (int i =0; i < needed; ++i)
 	{
 		sf::Sprite copy = layer.sprite;
 		copy.setPosition(baseX + texW * (firstTile + i), y);

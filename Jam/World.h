@@ -76,6 +76,9 @@ public:
 	// New: Reset the whole world (obstacles, flags)
 	void ResetWorld();
 
+	// New: swap parallax theme between normal and psycho mode
+	void SetPsychoMode(bool enable);
+	bool IsPsychoMode() const;
 
 private:
 	b2World& physicsWorld;
@@ -86,6 +89,11 @@ private:
 	void updateParallax(const sf::Vector2f& camPos);
 	bool  parallaxAligned = false;
 	float parallaxYOffset = 0.f;
+
+	// helper to (re)load parallax textures from a base path
+	void loadParallaxTextures(const std::string& basePath);
+	// helper to preload psycho textures so switching is instant
+	void preloadPsychoParallaxTextures();
 
 	// Obstacles
 	std::vector<Obstacle> obstacles;
@@ -139,6 +147,15 @@ private:
 	// Level extents (pixels)
 	float levelMinX = 1e9f;
 	float levelMaxX = -1e9f;
+
+	// Parallax theme state
+	bool m_parallaxPsycho = false;
+	std::string m_parallaxNormalBase = "Assets/Parallax/";
+	std::string m_parallaxPsychoBase = "Assets/Parallax/Level2/";
+
+	// Preloaded psycho textures and loaded flag
+	std::vector<sf::Texture> m_parallaxPsychoTextures;
+	bool m_parallaxPsychoLoaded = false;
 
 	// Helpers
 	void resetObstacle(Obstacle& o);

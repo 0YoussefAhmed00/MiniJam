@@ -390,7 +390,7 @@ void Game::processEvents()
 					m_audio.ResumeMusic();
 				}
 
-				// If we paused, do not perform menu reset logic below.
+				// If paused, do not perform menu reset logic below.
 				if (m_paused) continue;
 
 				// If unpausing via Escape should instead return to menu, remove continue above.
@@ -498,6 +498,9 @@ void Game::processEvents()
 				inputLockPending = false;
 				inputLockClock.restart();
 				nextInputLockCheck = randomFloat(3.f,6.f);
+
+				// Update parallax theme in World
+				if (m_worldView) m_worldView->SetPsychoMode(psychoMode);
 			}
 		}
 		if (ev.type == Event::KeyPressed && ev.key.code == Keyboard::Num1) {
@@ -530,6 +533,9 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 	m_lastAppliedAudioState = PlayerAudioState::Neutral; // ensure music logic matches player state
 	if (m_worldView)
 		m_worldView->ResetWorld();
+	// Ensure parallax normal
+	if (m_worldView) m_worldView->SetPsychoMode(false);
+
 	// Reset player audio & visuals
 	if (m_player) {
 		m_player->SetAudioState(PlayerAudioState::Neutral);
@@ -713,6 +719,9 @@ void Game::update(float dt)
 			inputLockPending = false;
 			inputLockClock.restart();
 			nextInputLockCheck = randomFloat(3.f,6.f);
+
+			// Update parallax theme in World
+			if (m_worldView) m_worldView->SetPsychoMode(psychoMode);
 		}
 	} else {
 		// While in win phase ensure psycho is disabled and reset clock so it doesn't re-enable later
@@ -723,6 +732,8 @@ void Game::update(float dt)
 				m_player->SetAudioState(PlayerAudioState::Neutral);
 			}
 			m_lastAppliedAudioState = PlayerAudioState::Neutral;
+			// ensure parallax back to normal
+			if (m_worldView) m_worldView->SetPsychoMode(false);
 		}
 		psychoClock.restart();
 	}
@@ -987,6 +998,8 @@ void Game::update(float dt)
 			// start countdown exactly once
 			m_gameOver = true;
 			m_disableInputDuringGameOver = true;
+			// ensure lose delay is3 seconds
+			m_gameOverDelay =3.f;
 			m_gameOverClock.restart();
 
 			// Ensure player goes back to normal immediately when losing
@@ -1018,6 +1031,8 @@ void Game::update(float dt)
 			// start win countdown
 			m_win = true;
 			m_disableInputDuringGameOver = true; // reuse flag to disable input
+			// ensure win delay is 8 seconds
+			m_gameOverDelay =8.f;
 			m_gameOverClock.restart(); // reuse same clock and delay
 
 			// Stop music & emitters
