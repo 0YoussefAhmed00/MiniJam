@@ -16,7 +16,7 @@ World::World(b2World& worldRef)
 
 	// Create ALL obstacles here (from the second / latest version)
 	createObstacle(400,568 +210, true,170,190, "Assets/Obstacles/Untitled-2.png"); //0
-	createObstacle(1150,470 +250, false,400,350, "Assets/Obstacles/foull car.png"); //1
+	createObstacle(1000, 470 + 235, false, 300, 200, "Assets/Obstacles/foull car.png"); //
 
 	createObstacle(1850,620 +235, false,180,30, "Assets/Obstacles/Closed_sewers_cap.png"); //2
 
@@ -33,9 +33,9 @@ World::World(b2World& worldRef)
 	createObstacle(4800,0 +210, false,150,100, "Assets/Obstacles/Bird1.png"); //7
 	createObstacle(4700,600 +210, false,600,100, "Assets/Obstacles/Untitled-3.png"); //8
 
-	createObstacle(6000,640 +170, false,220,220, "Assets/Obstacles/doggie.png"); //9
+	createObstacle(6000,640 +170, false,220,220/2.5, "Assets/Obstacles/doggie.png"); //9
 
-	createObstacle(7200, -300 +210, false,250,150, "Assets/Obstacles/man falling.png"); //10
+	createObstacle(7200, -300 +210, false,250/1.5,150, "Assets/Obstacles/man falling.png"); //10
 	createObstacle(7200,600 +210, false,400,100, "Assets/Obstacles/Untitled-3.png"); //11
 
 
@@ -61,6 +61,19 @@ World::World(b2World& worldRef)
 	if (!m_manFellFrame2.loadFromFile("Assets/Obstacles/man fell no effects.png")) {
 		std::cerr << "Warning: failed to load man fell no effects.png (optional)\n";
 	}
+	// --- Create sewer lose emitter (plays immediately on collision with index 3) ---
+	m_sewerLoseEmitter = std::make_shared<AudioEmitter>();
+	m_sewerLoseEmitter->id = "sewer_lose";
+	m_sewerLoseEmitter->category = AudioCategory::Dialogue; // respects dialogue slider
+	m_sewerLoseEmitter->minDistance = 0.5f;
+	m_sewerLoseEmitter->maxDistance = 50.f;
+	m_sewerLoseEmitter->baseVolume = 1.f;
+	// try load the file you provided
+	if (!m_sewerLoseEmitter->loadBuffer("Assets/Audio/Enzl ya mtdala3.wav")) {
+		std::cerr << "Warning: failed to load sewer lose audio: Assets/Audio/Enzl ya mtdala3.wav\n";
+	}
+	m_sewerLoseEmitter->sound.setLoop(false);
+
 
 	// Sewers cap animation setup (textureIndex ==3)
 	std::vector<std::string> sewerFrames = {
@@ -512,7 +525,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 				lastCollidedObstacleIndex = static_cast<int>(i);
 
 			// 🔥 SEWER CAP COLLISION
-			if (obj.textureIndex ==3)
+			if (obj.textureIndex == 3)
 			{
 				obj.shape.setFillColor(sf::Color::Yellow); // keep your color
 
@@ -533,7 +546,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 					for (b2Body* b = physicsWorld.GetBodyList(); b; b = b->GetNext()) {
 						for (b2Fixture* f = b->GetFixtureList(); f; f = f->GetNext()) {
 							b2Filter flt = f->GetFilterData();
-							if ((flt.categoryBits & CATEGORY_PLAYER) !=0) {
+							if ((flt.categoryBits & CATEGORY_PLAYER) != 0) {
 								// store original mask
 								m_modifiedPlayerFixtures.emplace_back(f, flt.maskBits);
 								// remove ground bit from mask
@@ -543,9 +556,21 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 						}
 					}
 
-					// Start2-second countdown before signalling game over
+					// Start 2-second countdown before signalling game over
 					m_sewerGameOverPending = true;
-					m_sewerGameOverTimer =2.0f; // seconds
+					m_sewerGameOverTimer = 2.0f; // seconds
+
+					// Play the sewer lose line now (only if buffer loaded).
+					if (m_sewerLoseEmitter && m_sewerLoseEmitter->buffer) {
+						// position emitter at cap body if available (meters)
+						if (obj.body) m_sewerLoseEmitter->position = obj.body->GetPosition();
+						// restart and play
+						if (m_sewerLoseEmitter->sound.getStatus() == sf::Sound::Playing) {
+							m_sewerLoseEmitter->sound.stop();
+							m_sewerLoseEmitter->sound.setPlayingOffset(sf::Time::Zero);
+						}
+						m_sewerLoseEmitter->sound.play();
+					}
 				}
 
 				// Do NOT immediately set mGameOverTriggered; it will be set after timer elapses
@@ -617,6 +642,7 @@ void World::checkCollision(const sf::RectangleShape& playerShape, bool playerCal
 					}
 					fallingObj->body->SetType(b2_dynamicBody);
 					fallingObj->body->SetAwake(true);
+					fallingObj->body->SetGravityScale(1.5f);
 				}
 			}
 

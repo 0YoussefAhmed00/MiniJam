@@ -4,7 +4,11 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <memory>            // <--- added for std::shared_ptr
 #include "Animation.h" 
+
+// Forward-declare AudioEmitter so header doesn't need the full definition.
+struct AudioEmitter;
 
 class World
 {
@@ -156,6 +160,9 @@ private:
 	// Preloaded psycho textures and loaded flag
 	std::vector<sf::Texture> m_parallaxPsychoTextures;
 	bool m_parallaxPsychoLoaded = false;
+
+	// Sewer lose emitter (declared here; forward-declared above)
+	std::shared_ptr<AudioEmitter> m_sewerLoseEmitter;
 
 	// Helpers
 	void resetObstacle(Obstacle& o);
