@@ -8,6 +8,12 @@
 #include <algorithm>
 #include <cmath>
 
+enum class MusicTrack {
+    Neutral = 0,
+    Crazy = 1,
+    Win = 2,            // <-- ADDED
+};
+
 enum class DistanceModelEnum { Linear, InverseSquare, Logarithmic };
 
 struct AudioSettings {
@@ -15,13 +21,16 @@ struct AudioSettings {
     float smoothingTime = 0.08f; // seconds for emitter smoothing
 };
 
+
+
 class AudioManager {
 public:
     AudioManager();
     ~AudioManager() = default;
 
     // music loader
-    bool loadMusic(const std::string& neutralPath, const std::string& crazyPath);
+    bool loadMusic(const std::string& neutralPath, const std::string& crazyPath, const std::string& winPath);
+    void CrossfadeToWin();  // <-- ADDED
 
     // explicit music playback control
     void StartMusic();   // start current track (neutral by default)
@@ -36,6 +45,15 @@ public:
     // music crossfade control (driven externally, e.g., by Player state)
     void CrossfadeToNeutral();
     void CrossfadeToCrazy();
+
+    sf::Music backgroundMusic;
+
+    // new methods (inside class declaration)
+    bool loadBackground(const std::string& path);
+    void StartBackground();
+    void StopBackground();
+    void applyBackgroundVolume();
+
 
     // volume setters
     void SetMasterVolume(float v);
@@ -52,6 +70,7 @@ public:
     float GetEffectsVolume() const { return effectsVolume; }
 
     void SetCrossfadeTime(float t);
+    void StartCrossfade(MusicTrack target);
 
     void Update(float dt, const b2Vec2& listenerPos);
     void PrintVolumes();
@@ -62,8 +81,8 @@ private:
     // music
     sf::Music neutralMusic;
     sf::Music crazyMusic;
+    sf::Music winMusic;     // <-- ADDED
 
-    enum class MusicTrack { Neutral, Crazy };
     MusicTrack m_currentTrack = MusicTrack::Neutral;
     MusicTrack m_targetTrack = MusicTrack::Neutral;
 
@@ -81,7 +100,7 @@ private:
     std::vector<std::shared_ptr<AudioEmitter>> emitters;
 
     sf::Music* musicForTrack(MusicTrack t);
-    void StartCrossfade(MusicTrack target);
+    
     void updateCrossfade(float dt);
 
     float ComputeGain(float distanceMeters, float minD, float maxD);

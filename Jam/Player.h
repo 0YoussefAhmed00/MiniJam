@@ -3,7 +3,7 @@
 #include <box2d/box2d.h>
 #include "Animation.h"
 
-enum class PlayerAudioState { Neutral, Crazy };
+enum class PlayerAudioState { Neutral, Crazy, Win };
 
 class Player {
 public:
