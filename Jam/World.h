@@ -84,6 +84,10 @@ public:
 	void SetPsychoMode(bool enable);
 	bool IsPsychoMode() const;
 
+	// Expose world-owned emitters so AudioManager in Game can register them
+	std::shared_ptr<AudioEmitter> GetSewerLoseEmitter();
+	std::shared_ptr<AudioEmitter> GetFoullCarEmitter();
+
 	std::shared_ptr<AudioEmitter> m_foullCarEmitter;
 	bool m_foullCarVoicePlayed = false;
 	float m_foullCarTriggerX = 0.f; // world X (pixels)

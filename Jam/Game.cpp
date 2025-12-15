@@ -42,11 +42,11 @@ Game::Game()
 	: m_window(VideoMode::getDesktopMode(),
 		"SFML + Box2D + AudioManager + Persona Demo",
 		Style::Fullscreen),
-	m_camera(FloatRect(0, 0,
+	m_camera(FloatRect(0,0,
 		1920,
 		1080)),
 	m_defaultView(m_window.getDefaultView()),
-	m_gravity(0.f, 20.f),
+	m_gravity(0.f,20.f),
 	m_world(m_gravity),
 	m_player(nullptr),
 	m_diagMark(8.f),
@@ -73,10 +73,27 @@ Game::Game()
 	// Store World (creates obstacles and holds category bits)
 	m_worldView = std::make_unique<World>(m_world);
 
+	// Register world-owned emitters with AudioManager so AudioManager can update volumes & spatialization
+	if (m_worldView) {
+		auto sewerEmitter = m_worldView->GetSewerLoseEmitter();
+		if (sewerEmitter) {
+			// position at sewer cap if available (meters)
+			sewerEmitter->position = m_worldView->getObstacleBodyPosition(3);
+			m_audio.RegisterEmitter(sewerEmitter);
+		}
+
+		auto foullCarEmitter = m_worldView->GetFoullCarEmitter();
+		if (foullCarEmitter) {
+			// position at foull car obstacle if available (index1)
+			foullCarEmitter->position = m_worldView->getObstacleBodyPosition(1);
+			m_audio.RegisterEmitter(foullCarEmitter);
+		}
+	}
+
 	// Ground (Box2D)
 	b2BodyDef groundDef;
 	groundDef.type = b2_staticBody;
-	groundDef.position.Set(640 * INV_PPM, 880 * INV_PPM);
+	groundDef.position.Set(640 * INV_PPM,880 * INV_PPM);
 	b2Body* ground = m_world.CreateBody(&groundDef);
 
 	b2PolygonShape groundBox;

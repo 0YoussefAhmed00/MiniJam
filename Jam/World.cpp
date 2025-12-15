@@ -96,14 +96,14 @@ World::World(b2World& worldRef)
 
 	// Sewers cap animation setup (textureIndex ==3)
 	std::vector<std::string> sewerFrames = {
-	"Assets/Obstacles/sewers_cap1.png",
-	"Assets/Obstacles/sewers_cap2.png",
-	"Assets/Obstacles/sewers_cap3.png",
-	"Assets/Obstacles/sewers_cap4.png",
-	"Assets/Obstacles/sewers_cap5.png",
-	"Assets/Obstacles/sewers_cap6.png",
-	"Assets/Obstacles/sewers_cap7.png",
-	"Assets/Obstacles/sewers_cap8.png"
+		"Assets/Obstacles/sewers_cap1.png",
+		"Assets/Obstacles/sewers_cap2.png",
+		"Assets/Obstacles/sewers_cap3.png",
+		"Assets/Obstacles/sewers_cap4.png",
+		"Assets/Obstacles/sewers_cap5.png",
+		"Assets/Obstacles/sewers_cap6.png",
+		"Assets/Obstacles/sewers_cap7.png",
+		"Assets/Obstacles/sewers_cap8.png"
 	};
 	m_sewersAnim.AddClip("open", sewerFrames,0.06f, /*loop=*/false);
 	m_sewersAnim.SetClip("open", true); // start on frame0
@@ -130,10 +130,10 @@ World::World(b2World& worldRef)
 	// 🐦 Bird animation setup
 	// Bird frames (your3 PNGs)
 	std::vector<std::string> birdFrames = {
-	"Assets/Hamama/1.png",
-	"Assets/Hamama/2.png",
-	"Assets/Hamama/3.png",
-	"Assets/Hamama/4.png",
+		"Assets/Hamama/1.png",
+		"Assets/Hamama/2.png",
+		"Assets/Hamama/3.png",
+		"Assets/Hamama/4.png",
 		"Assets/Hamama/5.png",
 		"Assets/Hamama/6.png",
 		"Assets/Hamama/7.png",
@@ -176,7 +176,9 @@ World::World(b2World& worldRef)
 
 }
 
-
+// Getter helpers for Game to register emitters
+std::shared_ptr<AudioEmitter> World::GetSewerLoseEmitter() { return m_sewerLoseEmitter; }
+std::shared_ptr<AudioEmitter> World::GetFoullCarEmitter() { return m_foullCarEmitter; }
 
 void World::loadParallaxTextures(const std::string& basePath)
 {
