@@ -1003,26 +1003,31 @@ void Game::update(float dt)
 			m_gameOverClock.restart();
 
 			// Ensure player goes back to normal immediately when losing
- 			psychoMode = false;
- 			if (m_player) {
- 				m_player->SetAudioState(PlayerAudioState::Neutral);
- 				m_player->SetColor(sf::Color::Red);
- 			}
- 			m_lastAppliedAudioState = PlayerAudioState::Neutral;
+			psychoMode = false;
+			if (m_player) {
+				m_player->SetAudioState(PlayerAudioState::Neutral);
+				m_player->SetColor(sf::Color::Red);
+				// Play lose animation
+				m_player->PlayLose();
+				// Stop player physics immediately so lose pose is shown
+				b2Body* pb = m_player->GetBody();
+				if (pb) { pb->SetLinearVelocity(b2Vec2_zero); pb->SetAngularVelocity(0.f); }
+			}
+			m_lastAppliedAudioState = PlayerAudioState::Neutral;
 
- 			// Stop music & emitters so the scene is quiet while counting down
- 			m_audio.StopMusic();
- 			if (m_dialogueEmitter && m_dialogueEmitter->buffer) m_dialogueEmitter->sound.stop();
- 			if (m_effectEmitter && m_effectEmitter->buffer) m_effectEmitter->sound.stop();
- 			if (m_playerReply && m_playerReply->buffer) m_playerReply->sound.stop();
- 			for (auto& kv : m_playerEmitters) {
- 				if (kv.second && kv.second->buffer) kv.second->sound.stop();
- 			}
+			// Stop music & emitters so the scene is quiet while counting down
+			m_audio.StopMusic();
+			if (m_dialogueEmitter && m_dialogueEmitter->buffer) m_dialogueEmitter->sound.stop();
+			if (m_effectEmitter && m_effectEmitter->buffer) m_effectEmitter->sound.stop();
+			if (m_playerReply && m_playerReply->buffer) m_playerReply->sound.stop();
+			for (auto& kv : m_playerEmitters) {
+				if (kv.second && kv.second->buffer) kv.second->sound.stop();
+			}
 
- 			// Prepare the "YOU LOSE" text
- 			m_gameOverText.setString("YOU LOSE");
- 			sf::FloatRect tb = m_gameOverText.getLocalBounds();
- 			m_gameOverText.setOrigin(tb.left + tb.width *0.5f, tb.top + tb.height *0.5f);
+			// Prepare the "YOU LOSE" text
+			m_gameOverText.setString("YOU LOSE");
+			sf::FloatRect tb = m_gameOverText.getLocalBounds();
+			m_gameOverText.setOrigin(tb.left + tb.width *0.5f, tb.top + tb.height *0.5f);
 		}
 
 		// NEW: Win trigger handling

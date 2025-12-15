@@ -169,6 +169,14 @@ Player::Player(b2World* world, float startX, float startY)
  paths.push_back(base + std::to_string(i) + ".png");
  m_anim.AddClip("Wave", paths,0.12f, false); // <-- NOT looping
  }
+ // Lose (played once during lose)
+ {
+ std::vector<std::string> paths;
+ const std::string base = "Assets/Player/Lose Animtion/";
+ for (int i =1; i <=5; ++i)
+ paths.push_back(base + std::to_string(i) + ".png");
+ m_anim.AddClip("Lose", paths,0.12f, false); // non-looping
+ }
  m_anim.SetClip("Idle", true);
  m_anim.SetFacingRight(true);
 
@@ -225,6 +233,33 @@ void Player::Update(float dt, bool grounded)
  else
  {
  // Still playing wave animation
+ m_anim.Update(dt);
+ return;
+ }
+ }
+
+ // Handle lose animation (single-instance, non-looping)
+ if (m_playingLose)
+ {
+ int currentFrame = m_anim.CurrentFrameIndex();
+
+ // Detect when animation freezes at last frame
+ if (currentFrame == m_lastLoseFrame)
+ m_loseTimer += dt;
+ else
+ m_loseTimer =0.f; // reset because still animating
+
+ m_lastLoseFrame = currentFrame;
+
+ // If non-looping clip stops changing frames → finished
+ if (m_loseTimer >0.15f)
+ {
+ m_playingLose = false;
+ // DO NOT return, fall through to normal state logic
+ }
+ else
+ {
+ // Still playing lose animation
  m_anim.Update(dt);
  return;
  }
@@ -296,6 +331,19 @@ void Player::PlayWave()
  }
 }
 
+void Player::PlayLose()
+{
+ if (!m_playingLose)
+ {
+ m_playingLose = true;
+ m_loseTimer =0.f;
+ m_lastLoseFrame = -1;
+
+ m_anim.SetClip("Lose", true);
+ m_anim.Reset();
+ }
+}
+
 // ------------------------------------------------------------
 // Play Win Animation: disables normal input-driven animation updates
 // ------------------------------------------------------------
@@ -305,6 +353,11 @@ void Player::PlayWin()
  m_playingWave = false;
  m_waveTimer =0.f;
  m_lastWaveFrame = -1;
+
+ // Stop lose state if active
+ m_playingLose = false;
+ m_loseTimer = 0.f;
+ m_lastLoseFrame = -1;
 
  // Start win anim clip (looping). AddClip must have been added in constructor.
  std::vector<std::string> winPaths;
@@ -337,6 +390,10 @@ void Player::ResetToIdle()
  m_playingWin = false;
  m_winTimer =0.f;
  m_lastWinFrame = -1;
+
+ m_playingLose = false;
+ m_loseTimer =0.f;
+ m_lastLoseFrame = -1;
 
  m_anim.SetClip("Idle", true);
  m_anim.Reset();

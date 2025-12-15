@@ -16,6 +16,11 @@ public:
     float m_winTimer = 0.f;
     int m_lastWinFrame = -1;
 
+    // Lose animation state
+    bool m_playingLose = false;
+    float m_loseTimer = 0.f;
+    int m_lastLoseFrame = -1;
+
     // Construct player and create physics body + fixtures in the provided world
     Player(b2World* world, float startX = 640.f, float startY = 200.f);
     ~Player();
@@ -33,6 +38,9 @@ public:
 
     // Play win animation (non-looping) and disable usual controls visually
     void PlayWin();
+
+    // Play lose animation (non-looping)
+    void PlayLose();
 
     // Reset visual/animation state to idle (used on ResetGameplay)
     void ResetToIdle();
