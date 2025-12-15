@@ -75,6 +75,25 @@ World::World(b2World& worldRef)
 	m_sewerLoseEmitter->sound.setLoop(false);
 
 
+	m_foullCarEmitter = std::make_shared<AudioEmitter>();
+	m_foullCarEmitter->id = "foull_car_line";
+	m_foullCarEmitter->category = AudioCategory::Dialogue;
+	m_foullCarEmitter->minDistance = 0.5f;
+	m_foullCarEmitter->maxDistance = 50.f;
+	m_foullCarEmitter->baseVolume = 1.f;
+
+	if (!m_foullCarEmitter->loadBuffer("Assets/Audio/el_btngan.wav"))
+	{
+		std::cerr << "Warning: failed to load el_btngan.wav\n";
+	}
+	m_foullCarEmitter->sound.setLoop(false);
+
+	// Cache foull car X position
+	if (Obstacle* foullCar = getObstacleByTexture(1))
+	{
+		m_foullCarTriggerX = foullCar->shape.getPosition().x;
+	}
+
 	// Sewers cap animation setup (textureIndex ==3)
 	std::vector<std::string> sewerFrames = {
 	"Assets/Obstacles/sewers_cap1.png",
@@ -338,6 +357,8 @@ void World::resetObstacle(Obstacle& o)
 void World::ResetWorld()
 {
 	mIsColliding = false;
+	m_foullCarVoicePlayed = false;
+
 	lastCollidedObstacleIndex = -1;
 	mGameOverTriggered = false;
 	mWinTriggered = false;
@@ -420,6 +441,15 @@ void World::update(float dt, const sf::Vector2f& camPos)
 		obj.shape.setRotation(angle *180.f /3.14159f);
 	}
 
+	if (m_foullCarEmitter &&
+		m_foullCarEmitter->sound.getStatus() == sf::Sound::Playing)
+	{
+		// camPos IS the player position in your game
+		m_foullCarEmitter->position.Set(
+			camPos.x * INV_PPM,
+			camPos.y * INV_PPM
+		);
+	}
 
 	// ✅ Animate sewer cap + move to the right on each frame change
 	if (m_sewersPlaying)
@@ -437,6 +467,25 @@ void World::update(float dt, const sf::Vector2f& camPos)
 			float stepX =60.f;
 			float stepY =0.f;
 			m_sewersSprite.move(stepX, stepY);
+		}
+	}
+
+	if (!m_foullCarVoicePlayed)
+	{
+		// player X is camera X center (your game already uses camPos)
+		if (camPos.x > m_foullCarTriggerX + 50.f) // small buffer past the car
+		{
+			if (m_foullCarEmitter && m_foullCarEmitter->buffer)
+			{
+				m_foullCarEmitter->position.Set(
+					m_foullCarTriggerX * INV_PPM,
+					0.f
+				);
+
+				m_foullCarEmitter->sound.play();
+			}
+
+			m_foullCarVoicePlayed = true;
 		}
 	}
 

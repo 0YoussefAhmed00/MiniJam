@@ -98,7 +98,7 @@ Game::Game()
 	m_fxMark.setFillColor(Color::Cyan);
 	m_fxMark.setOrigin(8.f, 8.f);
 
-	
+
 
 
 	// player reply emitter (just like refuse)
@@ -114,6 +114,46 @@ Game::Game()
 	}
 	m_playerReply->sound.setLoop(false);
 	m_audio.RegisterEmitter(m_playerReply);
+
+
+	m_playerDog = std::make_shared<AudioEmitter>();
+	m_playerDog->id = "playerDog";
+	m_playerDog->category = AudioCategory::Dialogue;
+	m_playerDog->minDistance = 0.5f;
+	m_playerDog->maxDistance = 20.f;
+	m_playerDog->baseVolume = 1.f;
+	m_playerDog->position = b2Vec2(0.f, 0.f); // optional: track player position if you want
+	if (!m_playerDog->loadBuffer("assets/Audio/kelab_la.wav")) {
+		std::cerr << "Warning: player reply audio not loaded\n";
+	}
+	m_playerDog->sound.setLoop(false);
+	m_audio.RegisterEmitter(m_playerDog);
+
+
+	// find dog obstacle by filename substring (looks for "doggie" in the file path)
+	m_dogObstacleIndex = m_worldView->findObstacleByTextureSubstring("doggie");
+
+	if (m_dogObstacleIndex >= 0)
+	{
+		m_dogEmitter = std::make_shared<AudioEmitter>();
+		m_dogEmitter->id = "dog_bark";
+		m_dogEmitter->category = AudioCategory::Effects; // <-- use Effects category
+		m_dogEmitter->minDistance = 0.5f;
+		m_dogEmitter->maxDistance = 50.f;
+		m_dogEmitter->baseVolume = 1.f;
+
+		// initial position at the dog's body (meters)
+		b2Vec2 dp = m_worldView->getObstacleBodyPosition(m_dogObstacleIndex);
+		m_dogEmitter->position = dp;
+
+		if (!m_dogEmitter->loadBuffer("assets/Audio/dog.wav")) {
+			std::cerr << "Warning: dog audio not loaded: assets/Audio/dog.wav\n";
+		}
+		m_dogEmitter->sound.setLoop(false);
+		m_audio.RegisterEmitter(m_dogEmitter);
+		m_dogPlayed = false;
+	}
+
 
 	// find the grocery obstacle by filename substring (change "grocery" to match your filename)
 	m_groceryObstacleIndex = m_worldView->findObstacleByTextureSubstring("grocery");
@@ -207,6 +247,8 @@ Game::Game()
 
 	createPlayerEmitter("refuse", "assets/Audio/refuse.wav");
 	createPlayerEmitter("player_reply", "assets/Audio/player_reply.wav");
+	createPlayerEmitter("kelab_la", "assets/Audio/kelab_la.wav");
+	/*createPlayerEmitter("player_reply", "assets/Audio/kelab_la.wav");*/
 	auto dbgIt = m_playerEmitters.find("player_reply");
 	if (dbgIt == m_playerEmitters.end() || !dbgIt->second || !dbgIt->second->buffer) {
 		std::cerr << "DEBUG: player_reply emitter missing or buffer not loaded. Check path & case sensitivity.\n";
@@ -345,6 +387,7 @@ void Game::processEvents()
 					// store previous statuses and pause
 					m_emitterPrevStatus.clear();
 					if (m_playerReply && m_playerReply->buffer) m_emitterPrevStatus["playerReply"] = m_playerReply->sound.getStatus(), m_playerReply->sound.pause();
+					if (m_playerDog && m_playerDog->buffer) m_emitterPrevStatus["kelab_la"] = m_playerDog->sound.getStatus(), m_playerDog->sound.pause();
 					// pause registered player emitters
 					for (auto& kv : m_playerEmitters) {
 						if (kv.second && kv.second->buffer) {
@@ -358,6 +401,7 @@ void Game::processEvents()
 					// Resume
 					// restore previously playing sounds
 					if (m_playerReply && m_playerReply->buffer) { if (m_emitterPrevStatus["playerReply"] == sf::Sound::Playing) m_playerReply->sound.play(); }
+					if (m_playerDog && m_playerDog->buffer) { if (m_emitterPrevStatus["kelab_la"] == sf::Sound::Playing) m_playerDog->sound.play(); }
 					for (auto& kv : m_playerEmitters) {
 						auto it = m_emitterPrevStatus.find(kv.first);
 						if (it != m_emitterPrevStatus.end() && it->second == sf::Sound::Playing) {
@@ -405,6 +449,7 @@ void Game::processEvents()
 					m_paused = false;
 					// restore audio (same logic as key handler)
 					if (m_playerReply && m_playerReply->buffer) { if (m_emitterPrevStatus["playerReply"] == sf::Sound::Playing) m_playerReply->sound.play(); }
+					if (m_playerDog && m_playerDog->buffer) { if (m_emitterPrevStatus["kelab_la"] == sf::Sound::Playing) m_playerDog->sound.play(); }
 					for (auto& kv : m_playerEmitters) {
 						auto it = m_emitterPrevStatus.find(kv.first);
 						if (it != m_emitterPrevStatus.end() && it->second == sf::Sound::Playing) {
@@ -581,6 +626,24 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 		if (m_groceryB) { m_groceryB->sound.stop(); m_groceryB->sound.setPlayingOffset(sf::Time::Zero); m_groceryB->position = gpos; }
 		if (m_groceryCollision) { m_groceryCollision->sound.stop(); m_groceryCollision->sound.setPlayingOffset(sf::Time::Zero); m_groceryCollision->position = gpos; }
 	}
+
+	// Reset dog emitter (stop & reset offset); keep position synced with obstacle if available
+	if (m_dogEmitter) {
+		m_dogEmitter->sound.stop();
+		m_dogEmitter->sound.setPlayingOffset(sf::Time::Zero);
+		if (m_dogObstacleIndex >= 0 && m_worldView) {
+			m_dogEmitter->position = m_worldView->getObstacleBodyPosition(m_dogObstacleIndex);
+		}
+	}
+
+	if (m_playerDog && m_playerDog->buffer) {
+		// Ensure it doesn't play too early
+		m_playerDog->sound.stop();
+		m_playerDog->sound.setPlayingOffset(sf::Time::Zero);
+	}
+
+	m_dogPlayed = false;
+
 
 	// Preserve user's mixer volumes set via Options during the current run.
 	// Do not overwrite m_audio volume sliders here.
@@ -980,6 +1043,38 @@ void Game::update(float dt)
 			m_gameOverDelay = 3.f;
 			m_gameOverClock.restart();
 
+
+			// Play dog sound if the last collided obstacle was the dog
+			int lastIdx = -1;
+			if (m_worldView) lastIdx = m_worldView->getLastCollidedObstacleIndex();
+
+			if (m_dogObstacleIndex >= 0 && lastIdx == m_dogObstacleIndex && m_dogEmitter && m_dogEmitter->buffer && !m_dogPlayed)
+			{
+				// Play dog bark immediately after player loses
+				m_dogEmitter->sound.stop();
+				m_dogEmitter->sound.play();
+
+				// Play the "player heard" dog sound at the player's location
+				// inside the game-over dog block where you play the player-located dog sound:
+				if (m_playerDog && m_playerDog->buffer) {
+					b2Vec2 playerPos = (m_player && m_player->GetBody()) ? m_player->GetBody()->GetPosition() : b2Vec2(0.f, 0.f);
+					m_playerDog->position = playerPos;
+
+					m_playerDog->sound.stop();
+					m_playerDog->sound.setPlayingOffset(sf::Time::Zero);
+					m_playerDog->sound.play();
+
+					// --- IMPORTANT: immediately apply audio manager update so emitter/listener positions
+					// are applied this frame even though update() may return early for game-over.
+					m_audio.Update(0.f, playerPos); // 0 seconds delta to apply positions now
+				}
+
+
+				m_dogPlayed = true;
+			}
+
+
+
 			// Ensure player goes back to normal immediately when losing
 			psychoMode = false;
 			if (m_player) {
@@ -1091,6 +1186,13 @@ void Game::update(float dt)
 			if (m_groceryB) m_groceryB->position = gpos;
 			if (m_groceryCollision) m_groceryCollision->position = gpos;
 		}
+
+		// update dog emitter position so spatialization tracks obstacle
+		if (m_dogObstacleIndex >= 0 && m_dogEmitter && m_worldView) {
+			b2Vec2 dpos = m_worldView->getObstacleBodyPosition(m_dogObstacleIndex);
+			m_dogEmitter->position = dpos;
+		}
+
 
 		// ---- Grocery: collision vs ambient behavior ----
 		bool collidingWithGrocery = (m_worldView->getLastCollidedObstacleIndex() == m_groceryObstacleIndex);

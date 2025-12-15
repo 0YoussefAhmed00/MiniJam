@@ -84,6 +84,10 @@ public:
 	void SetPsychoMode(bool enable);
 	bool IsPsychoMode() const;
 
+	std::shared_ptr<AudioEmitter> m_foullCarEmitter;
+	bool m_foullCarVoicePlayed = false;
+	float m_foullCarTriggerX = 0.f; // world X (pixels)
+
 private:
 	b2World& physicsWorld;
 

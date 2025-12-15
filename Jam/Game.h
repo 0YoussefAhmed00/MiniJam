@@ -87,6 +87,9 @@ private:
     // Audio
     AudioManager m_audio;
     std::shared_ptr<AudioEmitter> m_dialogueEmitter;
+    // keep transient sounds alive while they play
+    std::vector<sf::Sound> m_transientSounds;
+
     std::shared_ptr<AudioEmitter> m_effectEmitter;
 
     //Grocery Man Variables
@@ -95,7 +98,8 @@ private:
     std::shared_ptr<AudioEmitter> m_groceryA; // ambient line A
     std::shared_ptr<AudioEmitter> m_groceryB; // ambient line B
     std::shared_ptr<AudioEmitter> m_groceryCollision; // collision/callout line
-    std::shared_ptr<AudioEmitter> m_playerReply; // add as a private member of Game
+    std::shared_ptr<AudioEmitter> m_playerReply;
+    std::shared_ptr<AudioEmitter> m_playerDog; // add as a private member of Game
     bool m_groceryCollisionPlayed = false; // already used, but ensure it's declared as a member
     bool m_groceryWaitingPlayerReply = false;
 
@@ -117,6 +121,11 @@ private:
     std::shared_ptr<AudioEmitter> PlayerReply;
     sf::CircleShape m_diagMark;
     sf::CircleShape m_fxMark;
+
+    // Audio emitter for dog lose sound
+    std::shared_ptr<AudioEmitter> m_dogEmitter;
+    int m_dogObstacleIndex = -1; // index of dog obstacle (found at startup)
+    bool m_dogPlayed = false;
 
     // Persona variables
     bool psychoMode;
