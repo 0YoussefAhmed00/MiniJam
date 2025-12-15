@@ -51,6 +51,7 @@ World::World(b2World& worldRef)
 
 	createObstacle(8750,500, false,60,700, "Assets/Obstacles/Door_1.png"); //15
 
+	createObstacle(880, 470 + 170, false, 200/2, 200/2, "Assets/Obstacles/props3.png"); //
 
 	// Load doggie angry texture (optional, non-fatal)
 	if (!m_doggieAngryTexture.loadFromFile("Assets/Obstacles/doggieangry.png")) {
