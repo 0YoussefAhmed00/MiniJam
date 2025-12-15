@@ -104,8 +104,8 @@ World::World(b2World& worldRef)
 	"Assets/Hamama/4.png",
 		"Assets/Hamama/5.png",
 		"Assets/Hamama/6.png",
-		"Assets/Hamama/8.png",
-		"Assets/Hamama/7.png"
+		"Assets/Hamama/7.png",
+		"Assets/Hamama/8.png"
 	};
 
 	// Create a looping clip called "fly"
