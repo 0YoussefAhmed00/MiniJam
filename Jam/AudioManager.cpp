@@ -43,17 +43,17 @@ bool AudioManager::loadMusic(const std::string& neutralPath, const std::string& 
     crazyMusic.setVolume(0.f);
     winMusic.setVolume(0.f);
 
-    // Debug: print durations & initial status
-    std::cerr << "Loaded music files: neutral(" << neutralPath << ") duration="
-        << neutralMusic.getDuration().asSeconds()
-        << "s, crazy(" << crazyPath << ") duration="
-        << crazyMusic.getDuration().asSeconds()
-        << "s, win(" << winPath << ") duration="
-        << winMusic.getDuration().asSeconds() << "s\n";
+    //// Debug: print durations & initial status
+    //std::cerr << "Loaded music files: neutral(" << neutralPath << ") duration="
+    //    << neutralMusic.getDuration().asSeconds()
+    //    << "s, crazy(" << crazyPath << ") duration="
+    //    << crazyMusic.getDuration().asSeconds()
+    //    << "s, win(" << winPath << ") duration="
+    //    << winMusic.getDuration().asSeconds() << "s\n";
 
-    std::cerr << "Music initial statuses: neutral=" << neutralMusic.getStatus()
-        << " crazy=" << crazyMusic.getStatus()
-        << " win=" << winMusic.getStatus() << "\n";
+    //std::cerr << "Music initial statuses: neutral=" << neutralMusic.getStatus()
+    //    << " crazy=" << crazyMusic.getStatus()
+    //    << " win=" << winMusic.getStatus() << "\n";
 
     return true;
 }
@@ -181,7 +181,7 @@ void AudioManager::StartCrossfade(MusicTrack target) {
     // Special-case: when transitioning to Win, make it audible immediately.
     // This avoids the "zero-volume forever" if the crossfade timer doesn't advance.
     if (target == MusicTrack::Win) {
-        std::cerr << "[AudioManager] Immediate switch to WIN track\n";
+        //std::cerr << "[AudioManager] Immediate switch to WIN track\n";
         targetMusic->setVolume(masterVolume * musicVolume * 100.f);
         if (sourceMusic != targetMusic) {
             sourceMusic->stop();
@@ -198,9 +198,9 @@ void AudioManager::StartCrossfade(MusicTrack target) {
     crossfadeTimer = 0.f;
     m_targetTrack = target;
 
-    std::cerr << "[AudioManager] StartCrossfade: from " << static_cast<int>(m_currentTrack)
+    /*std::cerr << "[AudioManager] StartCrossfade: from " << static_cast<int>(m_currentTrack)
         << " to " << static_cast<int>(m_targetTrack)
-        << " crossfadeTime=" << crossfadeTime << "s\n";
+        << " crossfadeTime=" << crossfadeTime << "s\n";*/
 }
 
 void AudioManager::updateCrossfade(float dt) {
@@ -220,15 +220,15 @@ void AudioManager::updateCrossfade(float dt) {
     sourceMusic->setVolume(sourceVol);
     targetMusic->setVolume(targetVol);
 
-    std::cerr << "[AudioManager] updateCrossfade dt=" << dt
+    /*std::cerr << "[AudioManager] updateCrossfade dt=" << dt
         << " t=" << t << " smoothT=" << smoothT
-        << " sourceVol=" << sourceVol << " targetVol=" << targetVol << "\n";
+        << " sourceVol=" << sourceVol << " targetVol=" << targetVol << "\n";*/
 
     if (t >= 1.f - 1e-6f) {
         isCrossfading = false;
         if (sourceMusic != targetMusic) sourceMusic->stop();
         m_currentTrack = m_targetTrack;
-        std::cerr << "[AudioManager] Crossfade finished. currentTrack=" << static_cast<int>(m_currentTrack) << "\n";
+       // std::cerr << "[AudioManager] Crossfade finished. currentTrack=" << static_cast<int>(m_currentTrack) << "\n";
     }
 }
 
@@ -265,14 +265,14 @@ void AudioManager::applyMusicVolumes() {
 // Load an ambient/background music file (looping)
 bool AudioManager::loadBackground(const std::string& path) {
     if (!backgroundMusic.openFromFile(path)) {
-        std::cerr << "Failed to open background music: " << path << std::endl;
+        //std::cerr << "Failed to open background music: " << path << std::endl;
         return false;
     }
     backgroundMusic.setLoop(true);
     // initialize at configured volume but do NOT auto-play
     backgroundMusic.setVolume(masterVolume * backgroundVolume * 100.f);
-    std::cerr << "Loaded background music: " << path
-        << " duration=" << backgroundMusic.getDuration().asSeconds() << "s\n";
+   // std::cerr << "Loaded background music: " << path
+       // << " duration=" << backgroundMusic.getDuration().asSeconds() << "s\n";
     return true;
 }
 

@@ -389,12 +389,15 @@ void Player::PlayWin()
 void Player::ResetToIdle()
 {
 	m_playingWin = false;
-	m_winTimer = 0.f;
+	m_winTimer =0.f;
 	m_lastWinFrame = -1;
 
 	m_playingLose = false;
-	m_loseTimer = 0.f;
+	m_loseTimer =0.f;
 	m_lastLoseFrame = -1;
+
+	// Restore sprite scale to the default used in constructor
+	m_sprite.setScale(0.33f,0.33f);
 
 	m_anim.SetClip("Idle", true);
 	m_anim.Reset();

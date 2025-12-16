@@ -40,7 +40,7 @@ void Game::MyContactListener::EndContact(b2Contact* contact) {
 
 Game::Game()
 	: m_window(VideoMode::getDesktopMode(),
-		"SFML + Box2D + AudioManager + Persona Demo",
+		"Motlazmt el 3tba",
 		Style::Fullscreen),
 	m_camera(FloatRect(0,0,
 		1920,
@@ -268,10 +268,10 @@ Game::Game()
 	/*createPlayerEmitter("player_reply", "assets/Audio/kelab_la.wav");*/
 	auto dbgIt = m_playerEmitters.find("player_reply");
 	if (dbgIt == m_playerEmitters.end() || !dbgIt->second || !dbgIt->second->buffer) {
-		std::cerr << "DEBUG: player_reply emitter missing or buffer not loaded. Check path & case sensitivity.\n";
+		//std::cerr << "DEBUG: player_reply emitter missing or buffer not loaded. Check path & case sensitivity.\n";
 	}
 	else {
-		std::cerr << "DEBUG: player_reply emitter loaded successfully.\n";
+		//std::cerr << "DEBUG: player_reply emitter loaded successfully.\n";
 	}
 
 	//createPlayerEmitter("jump", "assets/Audio/jump.wav");
@@ -675,6 +675,10 @@ void Game::ResetGameplay(bool resetPlayerPosition)
 	m_audio.CrossfadeToNeutral();
 	m_audio.StartMusic();
 	m_audio.StartBackground();
+
+	// Ensure the game-over text color is reset to the default (red) so future lose uses the right color
+	m_gameOverText.setFillColor(sf::Color::Red);
+	m_gameOverText.setOutlineColor(sf::Color::Black);
 }
 
 void Game::SpawnBus()
@@ -1222,7 +1226,7 @@ void Game::update(float dt)
 			{
 				m_groceryCooldownActive = false;
 				// optional debug:
-				std::cerr << "DEBUG: grocery cooldown expired\n";
+				//std::cerr << "DEBUG: grocery cooldown expired\n";
 			}
 
 			if (collidingWithGrocery)
@@ -1239,7 +1243,7 @@ void Game::update(float dt)
 						m_groceryCollision->sound.stop(); // ensure restart
 						m_groceryCollision->sound.play();
 						m_groceryWaitingPlayerReply = true; // wait until grocery line finishes (persist even if player leaves)
-						std::cerr << "DEBUG: grocery collision line started\n";
+						//std::cerr << "DEBUG: grocery collision line started\n";
 					}
 					m_groceryCollisionPlayed = true;
 				}
@@ -1291,10 +1295,10 @@ void Game::update(float dt)
 						// restart to ensure we always hear it
 						itReply->second->sound.stop();
 						itReply->second->sound.play();
-						std::cerr << "DEBUG: played player_reply after grocery finished\n";
+						//std::cerr << "DEBUG: played player_reply after grocery finished\n";
 					}
 					else {
-						std::cerr << "DEBUG: player_reply emitter not found / buffer missing\n";
+						//std::cerr << "DEBUG: player_reply emitter not found / buffer missing\n";
 					}
 
 					// Done waiting for this collision ? reset flags so future collisions can re-trigger,
@@ -1305,7 +1309,7 @@ void Game::update(float dt)
 					// start cooldown to prevent immediate retrigger
 					m_groceryCooldownActive = true;
 					m_groceryCooldownClock.restart();
-					std::cerr << "DEBUG: grocery cooldown started (" << m_groceryCooldownDuration << "s)\n";
+					//std::cerr << "DEBUG: grocery cooldown started (" << m_groceryCooldownDuration << "s)\n";
 				}
 			}
 		}
@@ -1481,7 +1485,7 @@ void Game::render()
 	}
 
 	m_window.setView(m_defaultView);
-	std::string s = std::string("State: PLAYING\n") +
+	/*std::string s = std::string("State: PLAYING\n") +
 		"PsychoMode: " + (psychoMode ? "ON" : "OFF") + "\n" +
 		"InputLock: " + (inputLocked ? std::string("LOCKED") : std::string("FREE")) + "\n" +
 		"SplitMode: " + (splitMode ? std::string("ON") : std::string("OFF")) + "\n" +
@@ -1490,7 +1494,7 @@ void Game::render()
 		"1: play dialogue one-shot |2: play effect one-shot\n" +
 		"ESC: back to menu";
 	m_debugText.setString(s);
-	m_window.draw(m_debugText);
+	m_window.draw(m_debugText);*/
 
 	// Draw game-over HUD if active
 	if (m_gameOver || m_win) {
